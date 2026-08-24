@@ -1,6 +1,6 @@
 package com.fabribat.apiNomina.services;
 
-import lombok.extern.slf4j.Slf4j;
+
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,8 +25,10 @@ import com.fabribat.apiNomina.repositories.rrhh.BkpUsuarioRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefUsuarioRepository;
 
 @Service
-@Slf4j
+
 public class SincronizacionService {
+	
+	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SincronizacionService.class);
 
 	@Autowired
 	private OrpheusRestClient orpheusClient;
