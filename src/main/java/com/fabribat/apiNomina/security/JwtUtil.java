@@ -18,7 +18,9 @@ public class JwtUtil {
 
     private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
 
-    @Value("${sm://API_RRHH_S_JWT_SECRET}")
+    // En producción: Secret Manager (sm://API_RRHH_S_JWT_SECRET)
+    // En tests: application-test.properties (jwt.secret)
+    @Value("${jwt.secret:${sm://API_RRHH_S_JWT_SECRET}}")
     private String CLAVE_SECRETA;
     private final String EMISOR = "ApiNomina-BateriasEcuador";
     private final long TIEMPO_EXPIRACION = 3600000; // 1 hora

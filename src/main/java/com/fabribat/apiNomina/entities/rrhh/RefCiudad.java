@@ -16,10 +16,10 @@ public class RefCiudad implements Serializable {
 
 	@Id
 	@Column(name="cod_ciudad")
-	private short codCiudad;
+	private Short codCiudad;
 
 	@Column(name="cod_canton")
-	private short codCanton;
+	private Short codCanton;
 
 	@Column(name="cod_provincia")
 	private short codProvincia;

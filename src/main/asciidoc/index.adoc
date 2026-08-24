@@ -1,0 +1,137 @@
+= apiNomina - API REST Documentation
+:doctype: book
+:toc: left
+:toclevels: 3
+:sectlinks:
+:sectanchors:
+:hardbreaks:
+:source-highlighter: highlightjs
+:icons: font
+
+== Descripción General
+
+Esta documentación describe la API REST del servicio `apiNomina` para la gestión de recursos humanos y sincronización con ORPHEUS.
+
+La API está construida con Spring Boot 3.2.x, utiliza autenticación JWT stateless y expone endpoints para:
+* Autenticación y autorización
+* Sincronización de datos maestros (sucursal, departamento, cargo, empleado)
+* Consulta de catálogos para SSO Colaborador (provincias, ciudades, cargos, departamentos)
+
+== Convenciones
+
+=== Autenticación
+Todos los endpoints (excepto `POST /api/v1/auth/login`) requieren un token JWT válido en la cabecera:
+
+[source,http]
+----
+Authorization: Bearer <jwt-token>
+----
+
+El token se obtiene autenticándose en `/api/v1/auth/login` con credenciales válidas.
+
+=== Códigos de Respuesta Comunes
+| Código | Descripción |
+|--------|-------------|
+| 200 | OK - Solicitud exitosa |
+| 201 | Created - Recurso creado |
+| 400 | Bad Request - Error de validación |
+| 401 | Unauthorized - Token inválido o expirado |
+| 403 | Forbidden - Sin permisos suficientes |
+| 404 | Not Found - Recurso no encontrado |
+| 500 | Internal Server Error - Error del servidor |
+
+=== Formato de Fechas
+Todas las fechas usan formato ISO 8601: `yyyy-MM-dd` (ej. `2026-08-24`)
+
+== Estructura de la Documentación
+
+=== Autenticación
+Incluye el endpoint de login y verificación de perfil.
+
+include::{snippets}/auth/login/http-request.adoc[]
+include::{snippets}/auth/login/http-response.adoc[]
+include::{snippets}/auth/login/curl-request.adoc[]
+
+include::{snippets}/auth/perfil/http-request.adoc[]
+include::{snippets}/auth/perfil/http-response.adoc[]
+include::{snippets}/auth/perfil/curl-request.adoc[]
+
+=== Sincronización
+Endpoints para sincronizar datos maestros con ORPHEUS.
+
+include::{snippets}/sincronizacion/sucursal-matriz/http-request.adoc[]
+include::{snippets}/sincronizacion/sucursal-matriz/http-response.adoc[]
+include::{snippets}/sincronizacion/sucursal-matriz/curl-request.adoc[]
+
+include::{snippets}/sincronizacion/departamento/http-request.adoc[]
+include::{snippets}/sincronizacion/departamento/http-response.adoc[]
+include::{snippets}/sincronizacion/departamento/curl-request.adoc[]
+
+include::{snippets}/sincronizacion/cargo/http-request.adoc[]
+include::{snippets}/sincronizacion/cargo/http-response.adoc[]
+include::{snippets}/sincronizacion/cargo/curl-request.adoc[]
+
+include::{snippets}/sincronizacion/empleado/http-request.adoc[]
+include::{snippets}/sincronizacion/empleado/http-response.adoc[]
+include::{snippets}/sincronizacion/empleado/curl-request.adoc[]
+
+=== SSO Colaborador - Catálogos
+Endpoints de solo lectura para consultar catálogos formateados para ORPHEUS.
+
+==== Empleados
+include::{snippets}/sso-colaborador/colaboradores/http-request.adoc[]
+include::{snippets}/sso-colaborador/colaboradores/http-response.adoc[]
+include::{snippets}/sso-colaborador/colaboradores/curl-request.adoc[]
+
+include::{snippets}/sso-colaborador/colaborador-por-cedula/http-request.adoc[]
+include::{snippets}/sso-colaborador/colaborador-por-cedula/http-response.adoc[]
+include::{snippets}/sso-colaborador/colaborador-por-cedula/curl-request.adoc[]
+
+==== Provincias
+include::{snippets}/sso-colaborador/provincias/http-request.adoc[]
+include::{snippets}/sso-colaborador/provincias/http-response.adoc[]
+include::{snippets}/sso-colaborador/provincias/curl-request.adoc[]
+
+include::{snippets}/sso-colaborador/provincia-por-codigo/http-request.adoc[]
+include::{snippets}/sso-colaborador/provincia-por-codigo/http-response.adoc[]
+include::{snippets}/sso-colaborador/provincia-por-codigo/curl-request.adoc[]
+
+==== Ciudades
+include::{snippets}/sso-colaborador/ciudades/http-request.adoc[]
+include::{snippets}/sso-colaborador/ciudades/http-response.adoc[]
+include::{snippets}/sso-colaborador/ciudades/curl-request.adoc[]
+
+include::{snippets}/sso-colaborador/ciudad-por-codigo/http-request.adoc[]
+include::{snippets}/sso-colaborador/ciudad-por-codigo/http-response.adoc[]
+include::{snippets}/sso-colaborador/ciudad-por-codigo/curl-request.adoc[]
+
+==== Cargos
+include::{snippets}/sso-colaborador/cargos/http-request.adoc[]
+include::{snippets}/sso-colaborador/cargos/http-response.adoc[]
+include::{snippets}/sso-colaborador/cargos/curl-request.adoc[]
+
+include::{snippets}/sso-colaborador/cargo-por-codigo/http-request.adoc[]
+include::{snippets}/sso-colaborador/cargo-por-codigo/http-response.adoc[]
+include::{snippets}/sso-colaborador/cargo-por-codigo/curl-request.adoc[]
+
+==== Departamentos
+include::{snippets}/sso-colaborador/departamentos/http-request.adoc[]
+include::{snippets}/sso-colaborador/departamentos/http-response.adoc[]
+include::{snippets}/sso-colaborador/departamentos/curl-request.adoc[]
+
+include::{snippets}/sso-colaborador/departamento-por-codigo/http-request.adoc[]
+include::{snippets}/sso-colaborador/departamento-por-codigo/http-response.adoc[]
+include::{snippets}/sso-colaborador/departamento-por-codigo/curl-request.adoc[]
+
+== Generación de la Documentación
+
+Para generar la documentación HTML ejecutar:
+
+[source,bash]
+----
+./mvnw clean package
+----
+
+La documentación se generará en `target/generated-docs/index.html`
+
+Los snippets de prueba se generan en `target/generated-snippets/`
