@@ -9,6 +9,7 @@ import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.env.Environment; // <-- IMPORTANTE: Nuevo import
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -37,7 +38,8 @@ public class SecurityDbConfig {
     @Primary
     @Bean(name = "securityEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean securityEntityManagerFactory(
-            @Qualifier("securityDataSource") DataSource securityDataSource) {
+            @Qualifier("securityDataSource") DataSource securityDataSource,
+            Environment env) { // <-- IMPORTANTE: Inyectamos Environment
         
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(securityDataSource);
@@ -47,8 +49,13 @@ public class SecurityDbConfig {
         em.setJpaVendorAdapter(vendorAdapter);
         
         HashMap<String, Object> properties = new HashMap<>();
-        properties.put("hibernate.hbm2ddl.auto", "none");
-        properties.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        
+        // IMPORTANTE: Leemos los valores de las propiedades dinámicamente. 
+        // Si no existen (ej. en prod), usarán "none" y "MySQLDialect" por defecto.
+        // En tests, usarán "create-drop" y "H2Dialect".
+        properties.put("hibernate.hbm2ddl.auto", env.getProperty("spring.jpa.hibernate.ddl-auto", "none"));
+        properties.put("hibernate.dialect", env.getProperty("spring.jpa.properties.hibernate.dialect", "org.hibernate.dialect.MySQLDialect"));
+        
         em.setJpaPropertyMap(properties);
 
         return em;

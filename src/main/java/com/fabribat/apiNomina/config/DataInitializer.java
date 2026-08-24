@@ -2,6 +2,7 @@ package com.fabribat.apiNomina.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +11,7 @@ import com.fabribat.apiNomina.repositories.security.UsuarioApiRepository;
 import com.fabribat.apiNomina.services.SincronizacionService;
 
 @Component
+@Profile("!test")
 public class DataInitializer implements CommandLineRunner {
 	
 	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SincronizacionService.class);

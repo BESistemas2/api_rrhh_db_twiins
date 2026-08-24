@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment; // <-- IMPORTANTE: Nuevo import
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -34,7 +35,8 @@ public class RrhhDbConfig {
 
     @Bean(name = "rrhhEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean rrhhEntityManagerFactory(
-            @Qualifier("rrhhDataSource") DataSource rrhhDataSource) {
+            @Qualifier("rrhhDataSource") DataSource rrhhDataSource,
+            Environment env) { // <-- IMPORTANTE: Inyectamos Environment
         
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(rrhhDataSource);
@@ -44,8 +46,11 @@ public class RrhhDbConfig {
         em.setJpaVendorAdapter(vendorAdapter);
         
         HashMap<String, Object> properties = new HashMap<>();
-        properties.put("hibernate.hbm2ddl.auto", "none");
-        properties.put("hibernate.dialect", "org.hibernate.dialect.MySQLDialect");
+        
+        // Leemos las propiedades dinámicamente desde el application.properties o application-test.properties
+        properties.put("hibernate.hbm2ddl.auto", env.getProperty("spring.jpa.hibernate.ddl-auto", "none"));
+        properties.put("hibernate.dialect", env.getProperty("spring.jpa.properties.hibernate.dialect", "org.hibernate.dialect.MySQLDialect"));
+        
         em.setJpaPropertyMap(properties);
 
         return em;
