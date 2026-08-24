@@ -73,7 +73,7 @@ public class SincronizacionService {
 	// =========================================================================
 	public String sincronizarDepartamento(String codDepartamento) {
 		// Buscamos en la BD de RRHH (Solo lectura)
-		Optional<RefDepartamento> deptoOpt = departamentoRepo.findById(codDepartamento);
+		Optional<RefDepartamento> deptoOpt = departamentoRepo.findById(Short.parseShort(codDepartamento));
 
 		if (deptoOpt.isEmpty()) {
 			return "ERROR: Departamento no encontrado en BD Proveedor con código " + codDepartamento;
@@ -93,7 +93,7 @@ public class SincronizacionService {
 	// 3. SINCRONIZAR CARGO / PUESTO (Lee del Proveedor)
 	// =========================================================================
 	public String sincronizarCargo(String codCargo) {
-		Optional<RefCargo> cargoOpt = cargoRepo.findById(codCargo);
+		Optional<RefCargo> cargoOpt = cargoRepo.findById(Short.parseShort(codCargo));
 
 		if (cargoOpt.isEmpty()) {
 			return "ERROR: Cargo no encontrado en BD Proveedor con código " + codCargo;
@@ -389,7 +389,7 @@ public class SincronizacionService {
 	 */
 	public Map<String, Object> obtenerCargoPorCodigo(Long codigo) {
 		Map<String, Object> item = new HashMap<>();
-		Optional<RefCargo> opt = cargoRepo.findById(String.valueOf(codigo));
+		Optional<RefCargo> opt = cargoRepo.findById(codigo.shortValue());
 		
 		if (opt.isEmpty()) {
 			item.put("error", "Cargo no encontrado con código " + codigo);
@@ -444,7 +444,7 @@ public class SincronizacionService {
 	 */
 	public Map<String, Object> obtenerDepartamentoPorCodigo(String codigo) {
 		Map<String, Object> item = new HashMap<>();
-		Optional<RefDepartamento> opt = departamentoRepo.findById(codigo);
+		Optional<RefDepartamento> opt = departamentoRepo.findById(Short.parseShort(codigo));
 		
 		if (opt.isEmpty()) {
 			item.put("error", "Departamento no encontrado con código " + codigo);
