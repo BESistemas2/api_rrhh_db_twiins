@@ -58,7 +58,7 @@ public class RefCargo implements Serializable {
 	private String tipEmbacargo;
 
 	@Column(name="val_cargo")
-	private double valCargo;
+	private Double valCargo;
 
 	public RefCargo() {
 	}
@@ -175,11 +175,11 @@ public class RefCargo implements Serializable {
 		this.tipEmbacargo = tipEmbacargo;
 	}
 
-	public double getValCargo() {
+	public Double getValCargo() {
 		return this.valCargo;
 	}
 
-	public void setValCargo(double valCargo) {
+	public void setValCargo(Double valCargo) {
 		this.valCargo = valCargo;
 	}
 
