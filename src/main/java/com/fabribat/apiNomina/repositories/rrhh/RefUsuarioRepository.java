@@ -5,7 +5,7 @@ import java.util.Optional;
 import org.springframework.data.repository.Repository;
 import com.fabribat.apiNomina.entities.rrhh.RefUsuario;
 
-public interface RefUsuarioRepository extends Repository<RefUsuario, Long> {
+public interface RefUsuarioRepository extends Repository<RefUsuario, String> {
 
     // Devuelve SOLO los empleados que estén Activos ('A')
     List<RefUsuario> findByEstUsuario(String estUsuario);

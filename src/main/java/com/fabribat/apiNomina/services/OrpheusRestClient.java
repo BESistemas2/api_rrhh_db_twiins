@@ -1,13 +1,16 @@
 package com.fabribat.apiNomina.services;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.Map;
 
 @Service
@@ -21,8 +24,11 @@ public class OrpheusRestClient {
     @Value("${orpheus.api.entidad}")
     private String entidadId;
 
-    public OrpheusRestClient() {
-        this.restTemplate = new RestTemplate();
+    public OrpheusRestClient(RestTemplateBuilder builder) {
+        this.restTemplate = builder
+            .setConnectTimeout(Duration.ofSeconds(10))
+            .setReadTimeout(Duration.ofSeconds(15))
+            .build();
     }
 
     /**
@@ -46,7 +52,7 @@ public class OrpheusRestClient {
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
             return response.getBody();
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             // Aquí puedes agregar un log de error más elaborado
             System.err.println("❌ Error al consumir ORPHEUS en " + url + ": " + e.getMessage());
             throw new RuntimeException("Fallo la comunicación con ORPHEUS", e);

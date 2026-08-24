@@ -1,5 +1,6 @@
 package com.fabribat.apiNomina.controllers;
 
+import jakarta.validation.Valid;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fabribat.apiNomina.controllers.dto.LoginRequest;
 import com.fabribat.apiNomina.security.JwtUtil;
 
 @RestController
@@ -30,16 +32,21 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> credenciales) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest credenciales) {
         try {
-            String username = credenciales.get("username");
-            String password = credenciales.get("password");
+            String username = credenciales.getUsername();
+            String password = credenciales.getPassword();
 
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(username, password)
             );
 
-            String rol = auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+            // 🛡️ CORRECCIÓN: Validación ternaria segura
+            // Si no tiene roles, asigna "GUEST" por defecto para no romper el token JWT.
+            String rol = auth.getAuthorities().isEmpty() 
+                    ? "GUEST" 
+                    : auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", "");
+            
             String token = jwtUtil.generarToken(auth.getName(), rol);
 
             return ResponseEntity.ok(Map.of("token", token));
@@ -55,10 +62,15 @@ public class AuthController {
     public ResponseEntity<?> verPerfil() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         
+        // 🛡️ CORRECCIÓN: Validación ternaria segura para la respuesta del endpoint
+        String rolDetectado = auth.getAuthorities().isEmpty() 
+                ? "ROLE_GUEST" 
+                : auth.getAuthorities().iterator().next().getAuthority();
+        
         return ResponseEntity.ok(Map.of(
                 "mensaje", "Autenticación correcta en base de datos GCP",
                 "usuario_detectado", auth.getName(),
-                "rol_detectado", auth.getAuthorities().iterator().next().getAuthority()
+                "rol_detectado", rolDetectado
         ));
     }
 }
