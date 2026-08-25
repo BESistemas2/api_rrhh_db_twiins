@@ -44,24 +44,24 @@ public class OrpheusRestClient {
     public String setSucursal(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
         body.put("entidad", "47");
-        return sendPostRequest("/rest/set_sucursal", body);
+        return sendPostRequest("/sso/rest/set_sucursal", body);
     }
 
     public String setDepartamento(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
         body.put("entidad", "47");
-        return sendPostRequest("/rest/set_departamento", body);
+        return sendPostRequest("/sso/rest/set_departamento", body);
     }
 
     public String setCargo(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
         body.put("entidad", "47");
-        return sendPostRequest("/rest/set_cargo", body);
+        return sendPostRequest("/sso/rest/set_cargo", body);
     }
 
     public String setEmpleado(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
         body.put("entidad", "47");
-        return sendPostRequest("/rest/set_empleado", body);
+        return sendPostRequest("/sso/rest/set_empleado", body);
     }
 }
