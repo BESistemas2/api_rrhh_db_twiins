@@ -1,81 +1,67 @@
 package com.fabribat.apiNomina.services;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientException;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
-import java.util.Map;
-
-@Service
+@Component
 public class OrpheusRestClient {
 
-    private final RestTemplate restTemplate;
-    
-    @Value("${orpheus.api.base-url}")
-    private String baseUrl;
+    private static final Logger log = LoggerFactory.getLogger(OrpheusRestClient.class);
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final String baseUrl = "https://www.bateriasecuador.orpheus2.com.ec";
 
-    @Value("${orpheus.api.entidad}")
-    private String entidadId;
-
-    public OrpheusRestClient(RestTemplateBuilder builder) {
-        this.restTemplate = builder
-            .setConnectTimeout(Duration.ofSeconds(10))
-            .setReadTimeout(Duration.ofSeconds(15))
-            .build();
-    }
-
-    /**
-     * Método genérico para enviar peticiones POST a la API de ORPHEUS.
-     * 
-     * @param endpoint El sufijo de la URL (ej. "/set_sucursal")
-     * @param payload El mapa de datos a enviar en formato JSON
-     * @return La respuesta de la API en formato String (esperamos "TRUE")
-     */
-    private String sendPostRequest(String endpoint, Map<String, Object> payload) {
-        String url = baseUrl + endpoint;
-
-        // Inyectamos SIEMPRE el parámetro fijo "entidad" que exige ORPHEUS
-        payload.put("entidad", entidadId);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
-
+    public String sendPostRequest(String endpoint, Map<String, Object> payload) {
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url, requestEntity, String.class);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(baseUrl + endpoint, request, String.class);
+
             return response.getBody();
-        } catch (RestClientException e) {
-            // Aquí puedes agregar un log de error más elaborado
-            System.err.println("❌ Error al consumir ORPHEUS en " + url + ": " + e.getMessage());
-            throw new RuntimeException("Fallo la comunicación con ORPHEUS", e);
+
+        } catch (HttpStatusCodeException e) {
+            log.error("❌ Error HTTP al consumir ORPHEUS en {}: {} {}", 
+                    endpoint, e.getStatusCode(), e.getStatusText());
+            return "ERROR: " + e.getStatusCode().value() + " " + e.getStatusText();
+
+        } catch (Exception e) {
+            log.error("❌ Error de conexión al consumir ORPHEUS en {}: {}", endpoint, e.getMessage());
+            return "ERROR: " + e.getMessage();
         }
     }
 
-    // =========================================================================
-    // MÉTODOS ESPECÍFICOS PARA CADA ENDPOINT DE ORPHEUS
-    // =========================================================================
-
-    public String setSucursal(Map<String, Object> sucursalData) {
-        return sendPostRequest("/set_sucursal", sucursalData);
+    public String setSucursal(Map<String, Object> payload) {
+        Map<String, Object> body = new HashMap<>(payload);
+        body.put("entidad", "47");
+        return sendPostRequest("/rest/set_sucursal", body);
     }
 
-    public String setDepartamento(Map<String, Object> departamentoData) {
-        return sendPostRequest("/set_departamento", departamentoData);
+    public String setDepartamento(Map<String, Object> payload) {
+        Map<String, Object> body = new HashMap<>(payload);
+        body.put("entidad", "47");
+        return sendPostRequest("/rest/set_departamento", body);
     }
 
-    public String setCargo(Map<String, Object> cargoData) {
-        return sendPostRequest("/set_cargo", cargoData);
+    public String setCargo(Map<String, Object> payload) {
+        Map<String, Object> body = new HashMap<>(payload);
+        body.put("entidad", "47");
+        return sendPostRequest("/rest/set_cargo", body);
     }
 
-    public String setEmpleado(Map<String, Object> empleadoData) {
-        return sendPostRequest("/set_empleado", empleadoData);
+    public String setEmpleado(Map<String, Object> payload) {
+        Map<String, Object> body = new HashMap<>(payload);
+        body.put("entidad", "47");
+        return sendPostRequest("/rest/set_empleado", body);
     }
 }
