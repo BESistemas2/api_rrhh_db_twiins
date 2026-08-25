@@ -1,6 +1,7 @@
 package com.fabribat.apiNomina.services;
 
-
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -8,8 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
 
 import com.fabribat.apiNomina.entities.rrhh.BkpUsuario;
 import com.fabribat.apiNomina.entities.rrhh.RefCargo;
@@ -17,18 +21,19 @@ import com.fabribat.apiNomina.entities.rrhh.RefCiudad;
 import com.fabribat.apiNomina.entities.rrhh.RefDepartamento;
 import com.fabribat.apiNomina.entities.rrhh.RefProvincia;
 import com.fabribat.apiNomina.entities.rrhh.RefUsuario;
+import com.fabribat.apiNomina.entities.security.SincronizacionLog;
+import com.fabribat.apiNomina.repositories.rrhh.BkpUsuarioRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCargoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCiudadRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefDepartamentoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefProvinciaRepository;
-import com.fabribat.apiNomina.repositories.rrhh.BkpUsuarioRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefUsuarioRepository;
+import com.fabribat.apiNomina.repositories.security.SincronizacionLogRepository;
 
 @Service
-
 public class SincronizacionService {
 	
-	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SincronizacionService.class);
+	private static final Logger log = LoggerFactory.getLogger(SincronizacionService.class);
 
 	@Autowired
 	private OrpheusRestClient orpheusClient;
@@ -51,28 +56,65 @@ public class SincronizacionService {
 	@Autowired
 	private BkpUsuarioRepository bkpRepo;
 
-	// =========================================================================
-	// 1. SINCRONIZAR SUCURSAL (Datos Quemados - MVP)
-	// =========================================================================
-	public String sincronizarSucursalPorDefecto() {
+	@Autowired
+	private SincronizacionLogRepository syncLogRepo;
 
-		// Armamos el Payload con los datos fijos "MATRIZ"
-		Map<String, Object> payload = new HashMap<>();
-		payload.put("codigo", "001"); // Código fijo para la matriz
-		payload.put("nombre", "MATRIZ"); // Nombre fijo
-		payload.put("provincia", "17"); // Código de provincia (ej. Pichincha si aplica, o "1")
-		payload.put("ciudad", "1"); // Código de ciudad
-		payload.put("status", "A"); // Activo
+	// =========================================================================
+	// METODOS AUXILIARES DE CONTROL LOCAL
+	// =========================================================================
 
-		// Enviamos directamente a ORPHEUS
-		return orpheusClient.setSucursal(payload);
+	private String generarHash(Map<String, Object> payload) {
+		try {
+			return DigestUtils.md5DigestAsHex(payload.toString().getBytes(StandardCharsets.UTF_8));
+		} catch (Exception e) {
+			return String.valueOf(payload.hashCode());
+		}
+	}
+
+	private boolean esRegistroModificado(String tipoEntidad, String codigo, String nuevoHash) {
+		Optional<SincronizacionLog> logOpt = syncLogRepo.findByTipoEntidadAndCodigoEntidad(tipoEntidad, codigo);
+		if (logOpt.isEmpty()) {
+			return true;
+		}
+		return !nuevoHash.equals(logOpt.get().getHashContenido());
+	}
+
+	private void registrarSincronizacion(String tipoEntidad, String codigo, String hash, String resultado) {
+		Optional<SincronizacionLog> logOpt = syncLogRepo.findByTipoEntidadAndCodigoEntidad(tipoEntidad, codigo);
+		SincronizacionLog logEntity = logOpt.orElse(new SincronizacionLog());
+		logEntity.setTipoEntidad(tipoEntidad);
+		logEntity.setCodigoEntidad(codigo);
+		logEntity.setHashContenido(hash);
+		logEntity.setFechaUltimoSync(LocalDateTime.now());
+		logEntity.setResultado(resultado);
+		syncLogRepo.save(logEntity);
 	}
 
 	// =========================================================================
-	// 2. SINCRONIZAR DEPARTAMENTO (Lee del Proveedor)
+	// 1. SINCRONIZAR SUCURSAL
+	// =========================================================================
+	public String sincronizarSucursalPorDefecto() {
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("codigo", "001");
+		payload.put("nombre", "MATRIZ");
+		payload.put("provincia", "17");
+		payload.put("ciudad", "1");
+		payload.put("status", "A");
+
+		String hash = generarHash(payload);
+		String respuesta = orpheusClient.setSucursal(payload);
+		registrarSincronizacion("SUCURSAL", "001", hash, respuesta);
+		return respuesta;
+	}
+
+	// =========================================================================
+	// 2. SINCRONIZAR DEPARTAMENTO
 	// =========================================================================
 	public String sincronizarDepartamento(String codDepartamento) {
-		// Buscamos en la BD de RRHH (Solo lectura)
+		return sincronizarDepartamento(codDepartamento, true);
+	}
+
+	public String sincronizarDepartamento(String codDepartamento, boolean forzar) {
 		Optional<RefDepartamento> deptoOpt = departamentoRepo.findById(Short.parseShort(codDepartamento));
 
 		if (deptoOpt.isEmpty()) {
@@ -80,19 +122,57 @@ public class SincronizacionService {
 		}
 
 		RefDepartamento depto = deptoOpt.get();
+		String codigoStr = String.valueOf(depto.getCodDepartamento());
 
-		// Payload ORPHEUS
 		Map<String, Object> payload = new HashMap<>();
-		payload.put("codigo", depto.getCodDepartamento());
+		payload.put("codigo", codigoStr);
 		payload.put("nombre", depto.getNomDepartamento());
 
-		return orpheusClient.setDepartamento(payload);
+		String hash = generarHash(payload);
+
+		if (!forzar && !esRegistroModificado("DEPARTAMENTO", codigoStr, hash)) {
+			return "SKIPPED: Sin cambios";
+		}
+
+		String respuesta = orpheusClient.setDepartamento(payload);
+		registrarSincronizacion("DEPARTAMENTO", codigoStr, hash, respuesta);
+		return respuesta;
+	}
+
+	public Map<String, Object> sincronizarTodosLosDepartamentos(boolean soloModificados) {
+		List<RefDepartamento> deptos = departamentoRepo.findAll();
+		int total = deptos.size();
+		int procesados = 0;
+		int omitidos = 0;
+		int errores = 0;
+
+		for (RefDepartamento d : deptos) {
+			String res = sincronizarDepartamento(String.valueOf(d.getCodDepartamento()), !soloModificados);
+			if (res.startsWith("SKIPPED")) {
+				omitidos++;
+			} else if ("TRUE".equalsIgnoreCase(res != null ? res.trim() : "")) {
+				procesados++;
+			} else {
+				errores++;
+			}
+		}
+
+		Map<String, Object> resumen = new HashMap<>();
+		resumen.put("total", total);
+		resumen.put("procesados", procesados);
+		resumen.put("omitidos", omitidos);
+		resumen.put("errores", errores);
+		return resumen;
 	}
 
 	// =========================================================================
-	// 3. SINCRONIZAR CARGO / PUESTO (Lee del Proveedor)
+	// 3. SINCRONIZAR CARGO
 	// =========================================================================
 	public String sincronizarCargo(String codCargo) {
+		return sincronizarCargo(codCargo, true);
+	}
+
+	public String sincronizarCargo(String codCargo, boolean forzar) {
 		Optional<RefCargo> cargoOpt = cargoRepo.findById(Short.parseShort(codCargo));
 
 		if (cargoOpt.isEmpty()) {
@@ -100,84 +180,149 @@ public class SincronizacionService {
 		}
 
 		RefCargo cargo = cargoOpt.get();
+		String codigoStr = String.valueOf(cargo.getCodCargo());
 
-		// Payload ORPHEUS
 		Map<String, Object> payload = new HashMap<>();
-		payload.put("codigo", cargo.getCodCargo());
+		payload.put("codigo", codigoStr);
 		payload.put("nombre", cargo.getNomCargo());
+		payload.put("departamento", cargo.getCodDepartamento() != null ? String.valueOf(cargo.getCodDepartamento()) : "");
 
-		// ORPHEUS permite enviar departamento en blanco si no aplica
-		payload.put("departamento", cargo.getCodDepartamento() != null ? cargo.getCodDepartamento() : "");
-
-		// Asumimos campo de estado, si no existe en tu entidad, envía "A" por defecto
 		String estado = (cargo.getEstCargo() != null && cargo.getEstCargo().equals("A")) ? "A" : "I";
 		payload.put("status", estado);
-
-		// ORPHEUS requiere un código tipo. El doc dice 564 = "Puesto general"
 		payload.put("tipo", "564");
 
-		return orpheusClient.setCargo(payload);
+		String hash = generarHash(payload);
+
+		if (!forzar && !esRegistroModificado("CARGO", codigoStr, hash)) {
+			return "SKIPPED: Sin cambios";
+		}
+
+		String respuesta = orpheusClient.setCargo(payload);
+		registrarSincronizacion("CARGO", codigoStr, hash, respuesta);
+		return respuesta;
+	}
+
+	public Map<String, Object> sincronizarTodosLosCargos(boolean soloModificados) {
+		List<RefCargo> cargos = cargoRepo.findAll();
+		int total = cargos.size();
+		int procesados = 0;
+		int omitidos = 0;
+		int errores = 0;
+
+		for (RefCargo c : cargos) {
+			String res = sincronizarCargo(String.valueOf(c.getCodCargo()), !soloModificados);
+			if (res.startsWith("SKIPPED")) {
+				omitidos++;
+			} else if ("TRUE".equalsIgnoreCase(res != null ? res.trim() : "")) {
+				procesados++;
+			} else {
+				errores++;
+			}
+		}
+
+		Map<String, Object> resumen = new HashMap<>();
+		resumen.put("total", total);
+		resumen.put("procesados", procesados);
+		resumen.put("omitidos", omitidos);
+		resumen.put("errores", errores);
+		return resumen;
 	}
 
 	// =========================================================================
-	// 4. SINCRONIZAR EMPLEADO (Unión RefUsuario + BkpUsuario)
+	// 4. SINCRONIZAR EMPLEADO
 	// =========================================================================
 	public String sincronizarEmpleado(String cedula) {
+		return sincronizarEmpleado(cedula, true);
+	}
 
-		// 1. Obtener datos base del empleado
+	public String sincronizarEmpleado(String cedula, boolean forzar) {
 		Optional<RefUsuario> usuarioOpt = usuarioRepo.findFirstByCedUsuarioAndEstUsuario(cedula, "A");
 		if (usuarioOpt.isEmpty()) {
 			return "ERROR: Empleado no encontrado con cédula " + cedula;
 		}
 		RefUsuario usuario = usuarioOpt.get();
 
-		// 2. Obtener datos extendidos del LOG de Auditoría (El más reciente)
 		Optional<BkpUsuario> bkpOpt = bkpRepo.findFirstByCedUsuarioOrderByCambFechaDesc(cedula);
 		BkpUsuario bkp = bkpOpt.orElse(new BkpUsuario());
 
-		// 3. Construir payload y enviar a ORPHEUS
 		Map<String, Object> payload = buildEmpleadoPayload(usuario, bkp, false);
+		String hash = generarHash(payload);
+
+		if (!forzar && !esRegistroModificado("EMPLEADO", cedula, hash)) {
+			return "SKIPPED: Sin cambios";
+		}
+
 		String respuesta = orpheusClient.setEmpleado(payload);
 		
-		// 4. Log de éxito
 		if (respuesta != null && respuesta.trim().equalsIgnoreCase("TRUE")) {
 			log.info("Empleado sincronizado exitosamente: cédula={}, nombre={} {}", 
 				cedula, usuario.getNomUsuario(), usuario.getApeUsuario());
+			registrarSincronizacion("EMPLEADO", cedula, hash, respuesta);
 		} else {
 			log.warn("Respuesta inesperada de ORPHEUS al sincronizar empleado: cédula={}, respuesta={}", 
 				cedula, respuesta);
+			registrarSincronizacion("EMPLEADO", cedula, hash, "ERROR: " + respuesta);
 		}
 		
 		return respuesta;
 	}
 
-	/**
-	 * Helper para traducir el estado civil de tu BD a los códigos de ORPHEUS.
-	 * ORPHEUS: 1=No conoce, 2=Soltero, 3=Casado, 4=Viudo, 5=Divorciado, 6=Unión
-	 * Libre.
-	 */
+	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) {
+		List<RefUsuario> activos = usuarioRepo.findByEstUsuario("A");
+		int total = activos.size();
+		int procesados = 0;
+		int omitidos = 0;
+		int errores = 0;
+
+		for (RefUsuario u : activos) {
+			String res = sincronizarEmpleado(u.getCedUsuario(), !soloModificados);
+			if (res.startsWith("SKIPPED")) {
+				omitidos++;
+			} else if ("TRUE".equalsIgnoreCase(res != null ? res.trim() : "")) {
+				procesados++;
+			} else {
+				errores++;
+			}
+		}
+
+		Map<String, Object> resumen = new HashMap<>();
+		resumen.put("total", total);
+		resumen.put("procesados", procesados);
+		resumen.put("omitidos", omitidos);
+		resumen.put("errores", errores);
+		return resumen;
+	}
+
+	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados) {
+		sincronizarSucursalPorDefecto();
+		Map<String, Object> deptos = sincronizarTodosLosDepartamentos(soloModificados);
+		Map<String, Object> cargos = sincronizarTodosLosCargos(soloModificados);
+		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
+
+		Map<String, Object> resumenGeneral = new HashMap<>();
+		resumenGeneral.put("departamentos", deptos);
+		resumenGeneral.put("cargos", cargos);
+		resumenGeneral.put("empleados", empleados);
+		return resumenGeneral;
+	}
+
+	// =========================================================================
+	// UTILERIAS & PAYLOAD HELPERS
+	// =========================================================================
+
 	private String traducirEstadoCivil(String codCivilBD) {
-		if (codCivilBD == null)
-			return "1"; // No se conoce
+		if (codCivilBD == null) return "1";
 
 		return switch (codCivilBD.toUpperCase()) {
-		case "S" -> "2"; // Soltero
-		case "C" -> "3"; // Casado
-		case "V" -> "4"; // Viudo
-		case "D" -> "5"; // Divorciado
-		case "U" -> "6"; // Unión Libre
-		default -> "1"; // No se conoce
+			case "S" -> "2";
+			case "C" -> "3";
+			case "V" -> "4";
+			case "D" -> "5";
+			case "U" -> "6";
+			default -> "1";
 		};
 	}
 
-	/**
-	 * Construye el payload común para un empleado (usado tanto en sincronización como en prueba).
-	 * 
-	 * @param usuario Entidad RefUsuario con datos base
-	 * @param bkp Entidad BkpUsuario con datos extendidos (puede ser vacío)
-	 * @param includeEntidad Si true, agrega campo "entidad" = "47" (para testing)
-	 * @return Map con el payload completo
-	 */
 	private Map<String, Object> buildEmpleadoPayload(RefUsuario usuario, BkpUsuario bkp, boolean includeEntidad) {
 		Map<String, Object> payload = new HashMap<>();
 		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -189,35 +334,19 @@ public class SincronizacionService {
 		payload.put("cedula", usuario.getCedUsuario());
 		payload.put("nombres", usuario.getNomUsuario());
 		payload.put("apellidos", usuario.getApeUsuario());
-
-		// Fecha de Nacimiento (Desde BKP)
 		payload.put("nacimiento", bkp.getFechaNacimiento() != null ? bkp.getFechaNacimiento().format(dtf) : "");
-
 		payload.put("sexo", usuario.getSexUsuario() != null ? usuario.getSexUsuario() : "M");
-
-		// Estado Civil (Traducción de letras de BKP a números de ORPHEUS)
 		payload.put("estado_civil", traducirEstadoCivil(bkp.getEstadoCivil()));
-
-		// Nivel de instrucción
 		payload.put("instruccion", "7");
-
-		// Provincia y Ciudad de Residencia desde BkpUsuario
 		payload.put("provincia", bkp.getCodProvinciaVive() != null ? bkp.getCodProvinciaVive().toString() : "17");
 		payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
-
-		// LA SUCURSAL QUEMADA ("MATRIZ" = 001)
 		payload.put("local", "001");
-
 		payload.put("departamento", usuario.getCodDepartamento() != null ? usuario.getCodDepartamento().toString() : "");
 		payload.put("puesto", String.valueOf(usuario.getCodCargentiexte()));
-
-		// Fechas Laborales (Desde BKP)
 		payload.put("ingreso", bkp.getFechaIngreso() != null ? bkp.getFechaIngreso().format(dtf) : "");
 		payload.put("salida", bkp.getFechaSalida() != null ? bkp.getFechaSalida().format(dtf) : "");
 
-		// --- CONSTRUCCIÓN DE LA DIRECCIÓN COMPLETA ---
 		StringBuilder direccionCompleta = new StringBuilder();
-
 		if (bkp.getDireccionPrincipal() != null) direccionCompleta.append(bkp.getDireccionPrincipal());
 		if (bkp.getDireccionNumero() != null) direccionCompleta.append(" ").append(bkp.getDireccionNumero());
 		if (bkp.getDireccionSecundaria() != null) direccionCompleta.append(" Y ").append(bkp.getDireccionSecundaria());
@@ -235,14 +364,10 @@ public class SincronizacionService {
 	}
 
 	// =========================================================================
-	// MÉTODOS DE PRUEBA (SOLO GENERAN EL PAYLOAD, NO ENVÍAN A ORPHEUS)
+	// CONSULTA DE CATALOGOS
 	// =========================================================================
 
-	/**
-	 * Arma el JSON (Payload) de un empleado específico
-	 */
 	public Map<String, Object> obtenerPayloadEmpleado(String cedula) {
-		// Buscamos explícitamente el registro con estado 'A'
 		Optional<RefUsuario> usuarioOpt = usuarioRepo.findFirstByCedUsuarioAndEstUsuario(cedula, "A");
 
 		if (usuarioOpt.isEmpty()) {
@@ -252,34 +377,22 @@ public class SincronizacionService {
 		}
 
 		RefUsuario usuario = usuarioOpt.get();
-
 		Optional<BkpUsuario> bkpOpt = bkpRepo.findFirstByCedUsuarioOrderByCambFechaDesc(cedula);
 		BkpUsuario bkp = bkpOpt.orElse(new BkpUsuario());
 
 		return buildEmpleadoPayload(usuario, bkp, true);
 	}
 
-	/**
-	 * Recorre TODOS los empleados y arma una lista con sus payloads
-	 */
 	public List<Map<String, Object>> obtenerPayloadTodosLosEmpleados() {
-        // Traemos solo la lista de usuarios activos
-        List<RefUsuario> activos = usuarioRepo.findByEstUsuario("A");
-        List<Map<String, Object>> listaPayloads = new ArrayList<>();
+		List<RefUsuario> activos = usuarioRepo.findByEstUsuario("A");
+		List<Map<String, Object>> listaPayloads = new ArrayList<>();
 
-        for (RefUsuario u : activos) {
-            listaPayloads.add(obtenerPayloadEmpleado(u.getCedUsuario()));
-        }
-        return listaPayloads;
-    }
+		for (RefUsuario u : activos) {
+			listaPayloads.add(obtenerPayloadEmpleado(u.getCedUsuario()));
+		}
+		return listaPayloads;
+	}
 
-	// =========================================================================
-	// MÉTODOS PARA CONSULTA DE CATÁLOGOS (Provincia, Ciudad, Cargo)
-	// =========================================================================
-
-	/**
-	 * Obtiene todas las provincias activas
-	 */
 	public List<Map<String, Object>> obtenerTodasLasProvincias() {
 		List<RefProvincia> provincias = provinciaRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
@@ -295,9 +408,6 @@ public class SincronizacionService {
 		return lista;
 	}
 
-	/**
-	 * Obtiene una provincia por su código
-	 */
 	public Map<String, Object> obtenerProvinciaPorCodigo(Long codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefProvincia> opt = provinciaRepo.findById(codigo);
@@ -317,9 +427,6 @@ public class SincronizacionService {
 		return item;
 	}
 
-	/**
-	 * Obtiene todas las ciudades activas
-	 */
 	public List<Map<String, Object>> obtenerTodasLasCiudades() {
 		List<RefCiudad> ciudades = ciudadRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
@@ -338,9 +445,6 @@ public class SincronizacionService {
 		return lista;
 	}
 
-	/**
-	 * Obtiene una ciudad por su código
-	 */
 	public Map<String, Object> obtenerCiudadPorCodigo(Long codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefCiudad> opt = ciudadRepo.findById(codigo);
@@ -363,9 +467,6 @@ public class SincronizacionService {
 		return item;
 	}
 
-	/**
-	 * Obtiene todos los cargos activos
-	 */
 	public List<Map<String, Object>> obtenerTodosLosCargos() {
 		List<RefCargo> cargos = cargoRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
@@ -384,9 +485,6 @@ public class SincronizacionService {
 		return lista;
 	}
 
-	/**
-	 * Obtiene un cargo por su código
-	 */
 	public Map<String, Object> obtenerCargoPorCodigo(Long codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefCargo> opt = cargoRepo.findById(codigo.shortValue());
@@ -415,13 +513,6 @@ public class SincronizacionService {
 		return item;
 	}
 
-	// =========================================================================
-	// DEPARTAMENTOS
-	// =========================================================================
-
-	/**
-	 * Obtiene todos los departamentos activos
-	 */
 	public List<Map<String, Object>> obtenerTodosLosDepartamentos() {
 		List<RefDepartamento> departamentos = departamentoRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
@@ -439,9 +530,6 @@ public class SincronizacionService {
 		return lista;
 	}
 
-	/**
-	 * Obtiene un departamento por su código
-	 */
 	public Map<String, Object> obtenerDepartamentoPorCodigo(String codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefDepartamento> opt = departamentoRepo.findById(Short.parseShort(codigo));
@@ -469,5 +557,4 @@ public class SincronizacionService {
 		item.put("usrGerentesier", d.getUsrGerentesier());
 		return item;
 	}
-
 }
