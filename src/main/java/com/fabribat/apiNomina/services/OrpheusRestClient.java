@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,7 +19,12 @@ public class OrpheusRestClient {
 
     private static final Logger log = LoggerFactory.getLogger(OrpheusRestClient.class);
     private final RestTemplate restTemplate = new RestTemplate();
-    private final String baseUrl = "https://www.bateriasecuador.orpheus2.com.ec";
+
+    @Value("${orpheus.api.base-url:https://www.bateriasecuador.orpheus2.com.ec/sso/rest}")
+    private String baseUrl;
+
+    @Value("${orpheus.api.entidad:114}")
+    private String entidad;
 
     public String sendPostRequest(String endpoint, Map<String, Object> payload) {
         try {
@@ -31,37 +37,37 @@ public class OrpheusRestClient {
             return response.getBody();
 
         } catch (HttpStatusCodeException e) {
-            log.error("❌ Error HTTP al consumir ORPHEUS en {}: {} {}", 
-                    endpoint, e.getStatusCode(), e.getStatusText());
+            log.error("❌ Error HTTP al consumir ORPHEUS en {}{}: {} {}", 
+                    baseUrl, endpoint, e.getStatusCode(), e.getStatusText());
             return "ERROR: " + e.getStatusCode().value() + " " + e.getStatusText();
 
         } catch (Exception e) {
-            log.error("❌ Error de conexión al consumir ORPHEUS en {}: {}", endpoint, e.getMessage());
+            log.error("❌ Error de conexión al consumir ORPHEUS en {}{}: {}", baseUrl, endpoint, e.getMessage());
             return "ERROR: " + e.getMessage();
         }
     }
 
     public String setSucursal(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
-        body.put("entidad", "114");
-        return sendPostRequest("/sso/rest/set_sucursal", body);
+        body.put("entidad", entidad);
+        return sendPostRequest("/set_sucursal", body);
     }
 
     public String setDepartamento(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
-        body.put("entidad", "114");
-        return sendPostRequest("/sso/rest/set_departamento", body);
+        body.put("entidad", entidad);
+        return sendPostRequest("/set_departamento", body);
     }
 
     public String setCargo(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
-        body.put("entidad", "114");
-        return sendPostRequest("/sso/rest/set_cargo", body);
+        body.put("entidad", entidad);
+        return sendPostRequest("/set_cargo", body);
     }
 
     public String setEmpleado(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
-        body.put("entidad", "114");
-        return sendPostRequest("/sso/rest/set_empleado", body);
+        body.put("entidad", entidad);
+        return sendPostRequest("/set_empleado", body);
     }
 }
