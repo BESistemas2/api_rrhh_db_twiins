@@ -30,23 +30,40 @@ public class OrpheusRestClient {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            
+            // 1. Agregamos el Accept para evitar bloqueos de firewalls/WAF
+            headers.setAccept(java.util.Collections.singletonList(MediaType.APPLICATION_JSON));
+            
+            // Simulamos un User-Agent de navegador para evitar bloqueos de WAF
+            headers.add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            
+            // 2. Convertimos todos los valores del payload original a String
+            Map<String, String> stringPayload = new HashMap<>();
+            if (payload != null) {
+                for (Map.Entry<String, Object> entry : payload.entrySet()) {
+                    // String.valueOf() convierte números (ej. 1) a texto (ej. "1")
+                    stringPayload.put(entry.getKey(), entry.getValue() != null ? String.valueOf(entry.getValue()) : null);
+                }
+            }
 
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+            System.out.println("Headers: " + headers);
+            System.out.println("Payload a enviar: " + stringPayload); // En consola se verá igual, pero el JSON final enviará comillas.
+            
+            // 3. Enviamos el Map<String, String> para garantizar que el JSON lleve comillas en todo
+            HttpEntity<Map<String, String>> request = new HttpEntity<>(stringPayload, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(baseUrl + endpoint, request, String.class);
 
             return response.getBody();
-
         } catch (HttpStatusCodeException e) {
             log.error("❌ Error HTTP al consumir ORPHEUS en {}{}: {} {}", 
                     baseUrl, endpoint, e.getStatusCode(), e.getStatusText());
             return "ERROR: " + e.getStatusCode().value() + " " + e.getStatusText();
-
         } catch (Exception e) {
             log.error("❌ Error de conexión al consumir ORPHEUS en {}{}: {}", baseUrl, endpoint, e.getMessage());
             return "ERROR: " + e.getMessage();
         }
     }
-
+    
     public String setSucursal(Map<String, Object> payload) {
         Map<String, Object> body = new HashMap<>(payload);
         body.put("entidad", entidad);
