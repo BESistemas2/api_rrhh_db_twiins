@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class OrpheusRestClient {
@@ -46,8 +47,15 @@ public class OrpheusRestClient {
                 }
             }
 
-            System.out.println("Headers: " + headers);
-            System.out.println("Payload a enviar: " + stringPayload); // En consola se verá igual, pero el JSON final enviará comillas.
+         // --- NUEVO: Imprimir el JSON real para verificar ---
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                String jsonReal = mapper.writeValueAsString(stringPayload);
+                System.out.println("Headers: " + headers);
+                System.out.println("JSON REAL a enviar: " + jsonReal);
+            } catch (Exception e) {
+                System.out.println("Error imprimiendo JSON: " + e.getMessage());
+            }    
             
             // 3. Enviamos el Map<String, String> para garantizar que el JSON lleve comillas en todo
             HttpEntity<Map<String, String>> request = new HttpEntity<>(stringPayload, headers);
