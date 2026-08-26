@@ -57,7 +57,7 @@ public class OrpheusRestClient {
         } catch (HttpStatusCodeException e) {
             log.error("❌ Error HTTP al consumir ORPHEUS en {}{}: {} {}", 
                     baseUrl, endpoint, e.getStatusCode(), e.getStatusText());
-            return "ERROR: " + e.getStatusCode().value() + " " + e.getStatusText();
+            return "ERROR: " + e.getStatusCode().value() + " " + e.getStatusText() + " " + payload;
         } catch (Exception e) {
             log.error("❌ Error de conexión al consumir ORPHEUS en {}{}: {}", baseUrl, endpoint, e.getMessage());
             return "ERROR: " + e.getMessage();
