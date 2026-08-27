@@ -19,7 +19,7 @@ services:
     labels:
       - "traefik.enable=true"
       # URL con la que accederás a tu API
-      - "traefik.http.routers.api-nomina.rule=Host(`nomina.fabribat.com`)"
+      - "traefik.http.routers.api-nomina.rule=Host(`rrhh.fabribat.com`)"
       - "traefik.http.routers.api-nomina.entrypoints=websecure"
       - "traefik.http.routers.api-nomina.tls.certresolver=myresolver"
       # Le decimos a Traefik en qué puerto escucha Spring Boot INTERNAMENTE
