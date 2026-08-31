@@ -18,6 +18,7 @@ import org.springframework.util.DigestUtils;
 import com.fabribat.apiNomina.entities.rrhh.BkpUsuario;
 import com.fabribat.apiNomina.entities.rrhh.RefCargo;
 import com.fabribat.apiNomina.entities.rrhh.RefCiudad;
+import com.fabribat.apiNomina.entities.rrhh.RefCanton;
 import com.fabribat.apiNomina.entities.rrhh.RefDepartamento;
 import com.fabribat.apiNomina.entities.rrhh.RefProvincia;
 import com.fabribat.apiNomina.entities.rrhh.RefUsuario;
@@ -25,6 +26,7 @@ import com.fabribat.apiNomina.entities.security.SincronizacionLog;
 import com.fabribat.apiNomina.repositories.rrhh.BkpUsuarioRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCargoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCiudadRepository;
+import com.fabribat.apiNomina.repositories.rrhh.RefCantonRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefDepartamentoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefProvinciaRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefUsuarioRepository;
@@ -49,6 +51,9 @@ public class SincronizacionService {
 
 	@Autowired
 	private RefCiudadRepository ciudadRepo;
+	
+	@Autowired
+	private RefCantonRepository cantonRepo;
 
 	@Autowired
 	private RefUsuarioRepository usuarioRepo;
@@ -464,6 +469,39 @@ public class SincronizacionService {
 		item.put("codigoSri", c.getCodSriciudad());
 		item.put("ideCiudad", c.getIdeCiudad());
 		item.put("traCiudad", c.getTraCiudad());
+		return item;
+	}
+	
+	public List<Map<String, Object>> obtenerTodosLosCantones() {
+		List<RefCanton> cantones = cantonRepo.findAll();
+		List<Map<String, Object>> lista = new ArrayList<>();
+		
+		for (RefCanton c : cantones) {
+			Map<String, Object> item = new HashMap<>();
+			item.put("codigo", c.getCodCanton());
+			item.put("nombre", c.getNomCanton());
+			item.put("estado", c.getEstCanton());
+			item.put("codigoProvincia", c.getCodProvincia());
+			lista.add(item);
+		}
+		return lista;
+	}
+
+	public Map<String, Object> obtenerCantonPorCodigo(Short codigo) {
+		Map<String, Object> item = new HashMap<>();
+		Optional<RefCanton> opt = cantonRepo.findById(codigo);
+		
+		if (opt.isEmpty()) {
+			item.put("error", "Canton no encontrado con código " + codigo);
+			return item;
+		}
+		
+		RefCanton c = opt.get();
+		item.put("codigo", c.getCodCanton());
+		item.put("nombre", c.getNomCanton());
+		item.put("estado", c.getEstCanton());
+		item.put("codigoProvincia", c.getCodProvincia());
+
 		return item;
 	}
 

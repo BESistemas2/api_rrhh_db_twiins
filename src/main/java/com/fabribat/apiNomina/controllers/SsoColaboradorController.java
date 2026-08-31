@@ -77,6 +77,26 @@ public class SsoColaboradorController {
         
         return ResponseEntity.ok(response);
     }
+    
+    // =========================================================================
+    // CANTONES
+    // =========================================================================
+    @GetMapping("/sso-cantones")
+    public ResponseEntity<List<Map<String, Object>>> getTodosLosCantones() {
+        List<Map<String, Object>> response = syncService.obtenerTodosLosCantones();
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/sso-canton/{codigo}")
+    public ResponseEntity<Map<String, Object>> getCantonPorCodigo(@PathVariable Short codigo) {
+        Map<String, Object> response = syncService.obtenerCantonPorCodigo(codigo);
+        
+        if (response.containsKey("error")) {
+            return ResponseEntity.status(404).body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
 
     // =========================================================================
     // CARGOS
