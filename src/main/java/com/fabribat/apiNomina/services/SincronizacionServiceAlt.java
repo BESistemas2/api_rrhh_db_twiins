@@ -41,9 +41,9 @@ import com.fabribat.apiNomina.repositories.security.RefDepartamentoRepositoryAlt
 import com.fabribat.apiNomina.repositories.security.RefProvinciaRepositoryAlt;
 
 @Service
-public class SincronizacionService {
+public class SincronizacionServiceAlt {
 	
-	private static final Logger log = LoggerFactory.getLogger(SincronizacionServiceAlt.class);
+	private static final Logger log = LoggerFactory.getLogger(SincronizacionService.class);
 
 	@Autowired
 	private OrpheusRestClient orpheusClient;
@@ -135,18 +135,18 @@ public class SincronizacionService {
 	// =========================================================================
 	// 2. SINCRONIZAR DEPARTAMENTO
 	// =========================================================================
-	public String sincronizarDepartamento(String codDepartamento) {
-		return sincronizarDepartamento(codDepartamento, true);
+	public String sincronizarDepartamentoAlt(String codDepartamento) {
+		return sincronizarDepartamentoAlt(codDepartamento, true);
 	}
 
-	public String sincronizarDepartamento(String codDepartamento, boolean forzar) {
-		Optional<RefDepartamento> deptoOpt = departamentoRepo.findById(Short.parseShort(codDepartamento));
+	public String sincronizarDepartamentoAlt(String codDepartamento, boolean forzar) {
+		Optional<RefDepartamentoAlt> deptoOpt = departamentoRepoAlt.findById(Short.parseShort(codDepartamento));
 
 		if (deptoOpt.isEmpty()) {
 			return "ERROR: Departamento no encontrado en BD Proveedor con código " + codDepartamento;
 		}
 
-		RefDepartamento depto = deptoOpt.get();
+		RefDepartamentoAlt depto = deptoOpt.get();
 		String codigoStr = String.valueOf(depto.getCodDepartamento());
 
 		Map<String, Object> payload = new HashMap<>();
@@ -164,15 +164,15 @@ public class SincronizacionService {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosDepartamentos(boolean soloModificados) {
-		List<RefDepartamento> deptos = departamentoRepo.findAll();
+	public Map<String, Object> sincronizarTodosLosDepartamentosAlt(boolean soloModificados) {
+		List<RefDepartamentoAlt> deptos = departamentoRepoAlt.findAll();
 		int total = deptos.size();
 		int procesados = 0;
 		int omitidos = 0;
 		int errores = 0;
 
-		for (RefDepartamento d : deptos) {
-			String res = sincronizarDepartamento(String.valueOf(d.getCodDepartamento()), !soloModificados);
+		for (RefDepartamentoAlt d : deptos) {
+			String res = sincronizarDepartamentoAlt(String.valueOf(d.getCodDepartamento()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
 			} else if ("TRUE".equalsIgnoreCase(res != null ? res.trim() : "")) {
@@ -193,18 +193,18 @@ public class SincronizacionService {
 	// =========================================================================
 	// 3. SINCRONIZAR CARGO
 	// =========================================================================
-	public String sincronizarCargo(String codCargo) {
-		return sincronizarCargo(codCargo, true);
+	public String sincronizarCargoAlt(String codCargo) {
+		return sincronizarCargoAlt(codCargo, true);
 	}
 
-	public String sincronizarCargo(String codCargo, boolean forzar) {
-		Optional<RefCargo> cargoOpt = cargoRepo.findById(Short.parseShort(codCargo));
+	public String sincronizarCargoAlt(String codCargo, boolean forzar) {
+		Optional<RefCargoAlt> cargoOpt = cargoRepoAlt.findById(Short.parseShort(codCargo));
 
 		if (cargoOpt.isEmpty()) {
 			return "ERROR: Cargo no encontrado en BD Proveedor con código " + codCargo;
 		}
 
-		RefCargo cargo = cargoOpt.get();
+		RefCargoAlt cargo = cargoOpt.get();
 		String codigoStr = String.valueOf(cargo.getCodCargo());
 
 		Map<String, Object> payload = new HashMap<>();
@@ -227,15 +227,15 @@ public class SincronizacionService {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosCargos(boolean soloModificados) {
-		List<RefCargo> cargos = cargoRepo.findAll();
+	public Map<String, Object> sincronizarTodosLosCargosAlt(boolean soloModificados) {
+		List<RefCargoAlt> cargos = cargoRepoAlt.findAll();
 		int total = cargos.size();
 		int procesados = 0;
 		int omitidos = 0;
 		int errores = 0;
 
-		for (RefCargo c : cargos) {
-			String res = sincronizarCargo(String.valueOf(c.getCodCargo()), !soloModificados);
+		for (RefCargoAlt c : cargos) {
+			String res = sincronizarCargoAlt(String.valueOf(c.getCodCargo()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
 			} else if ("TRUE".equalsIgnoreCase(res != null ? res.trim() : "")) {
@@ -320,8 +320,8 @@ public class SincronizacionService {
 
 	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados) {
 		sincronizarSucursalPorDefecto();
-		Map<String, Object> deptos = sincronizarTodosLosDepartamentos(soloModificados);
-		Map<String, Object> cargos = sincronizarTodosLosCargos(soloModificados);
+		Map<String, Object> deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
+		Map<String, Object> cargos = sincronizarTodosLosCargosAlt(soloModificados);
 		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
 
 		Map<String, Object> resumenGeneral = new HashMap<>();
@@ -375,8 +375,9 @@ public class SincronizacionService {
 		if (bkp.getDireccionPrincipal() != null) direccionCompleta.append(bkp.getDireccionPrincipal());
 		if (bkp.getDireccionNumero() != null) direccionCompleta.append(" ").append(bkp.getDireccionNumero());
 		if (bkp.getDireccionSecundaria() != null) direccionCompleta.append(" Y ").append(bkp.getDireccionSecundaria());
-		if (bkp.getDireccionReferencia() != null) direccionCompleta.append(" - REF: ").append(bkp.getDireccionReferencia());
 		if (bkp.getDireccionBarrio() != null) direccionCompleta.append(" - ").append(bkp.getDireccionBarrio());
+		if (bkp.getDireccionReferencia() != null) direccionCompleta.append(" - REF: ").append(bkp.getDireccionReferencia());
+
 
 		payload.put("direccion", direccionCompleta.toString().trim());
 		payload.put("telefono", "");
