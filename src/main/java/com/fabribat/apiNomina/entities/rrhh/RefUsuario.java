@@ -38,7 +38,7 @@ public class RefUsuario implements Serializable {
 	private String celUsuario;
 
 	@Column(name="cod_cargentiexte")
-	private short codCargentiexte;
+	private Short codCargentiexte;
 
 	@Column(name="cod_departamento")
 	private Short codDepartamento;
@@ -163,11 +163,11 @@ public class RefUsuario implements Serializable {
 		this.celUsuario = celUsuario;
 	}
 
-	public short getCodCargentiexte() {
+	public Short getCodCargentiexte() {
 		return this.codCargentiexte;
 	}
 
-	public void setCodCargentiexte(short codCargentiexte) {
+	public void setCodCargentiexte(Short codCargentiexte) {
 		this.codCargentiexte = codCargentiexte;
 	}
 

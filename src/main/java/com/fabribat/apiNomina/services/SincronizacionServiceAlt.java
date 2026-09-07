@@ -164,14 +164,15 @@ public class SincronizacionServiceAlt {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosDepartamentosAlt(boolean soloModificados) {
-		List<RefDepartamentoAlt> deptos = departamentoRepoAlt.findAll();
+	public Map<String, Object> sincronizarTodosLosDepartamentosAlt(boolean soloModificados) throws InterruptedException {
+		List<RefDepartamentoAlt> deptos = departamentoRepoAlt.findByEstDepartamento("A");
 		int total = deptos.size();
 		int procesados = 0;
 		int omitidos = 0;
 		int errores = 0;
 
 		for (RefDepartamentoAlt d : deptos) {
+			Thread.sleep(50);
 			String res = sincronizarDepartamentoAlt(String.valueOf(d.getCodDepartamento()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -227,14 +228,15 @@ public class SincronizacionServiceAlt {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosCargosAlt(boolean soloModificados) {
-		List<RefCargoAlt> cargos = cargoRepoAlt.findAll();
+	public Map<String, Object> sincronizarTodosLosCargosAlt(boolean soloModificados) throws InterruptedException {
+		List<RefCargoAlt> cargos = cargoRepoAlt.findByEstCargo("A");
 		int total = cargos.size();
 		int procesados = 0;
 		int omitidos = 0;
 		int errores = 0;
 
 		for (RefCargoAlt c : cargos) {
+			Thread.sleep(50);
 			String res = sincronizarCargoAlt(String.valueOf(c.getCodCargo()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -292,7 +294,7 @@ public class SincronizacionServiceAlt {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) {
+	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) throws InterruptedException {
 		List<RefUsuario> activos = usuarioRepo.findByEstUsuario("A");
 		int total = activos.size();
 		int procesados = 0;
@@ -300,6 +302,7 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefUsuario u : activos) {
+			Thread.sleep(50);
 			String res = sincronizarEmpleado(u.getCedUsuario(), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -318,17 +321,27 @@ public class SincronizacionServiceAlt {
 		return resumen;
 	}
 
-	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados) {
+	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados){
 		sincronizarSucursalPorDefecto();
-		Map<String, Object> deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
-		Map<String, Object> cargos = sincronizarTodosLosCargosAlt(soloModificados);
-		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
-
+		Map<String, Object> deptos;
+		Map<String, Object> cargos;
+		Map<String, Object> empleados;
 		Map<String, Object> resumenGeneral = new HashMap<>();
-		resumenGeneral.put("departamentos", deptos);
-		resumenGeneral.put("cargos", cargos);
-		resumenGeneral.put("empleados", empleados);
+		try {
+			deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
+			cargos = sincronizarTodosLosCargosAlt(soloModificados);
+			empleados = sincronizarTodosLosEmpleados(soloModificados);
+			
+			resumenGeneral.put("departamentos", deptos);
+			resumenGeneral.put("cargos", cargos);
+			resumenGeneral.put("empleados", empleados);
+			
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return resumenGeneral;
+		
 	}
 
 	// =========================================================================
@@ -363,11 +376,32 @@ public class SincronizacionServiceAlt {
 		payload.put("sexo", usuario.getSexUsuario() != null ? usuario.getSexUsuario() : "M");
 		payload.put("estado_civil", traducirEstadoCivil(bkp.getEstadoCivil()));
 		payload.put("instruccion", "7");
-		payload.put("provincia", bkp.getCodProvinciaVive() != null ? bkp.getCodProvinciaVive().toString() : "17");
-		payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
+		if(bkp.getCodProvinciaVive()== null || "-1".equals(bkp.getCodProvinciaVive().toString())){
+			payload.put("provincia", "17");
+		}else {
+			payload.put("provincia", bkp.getCodProvinciaVive().toString());
+		}
+		if(bkp.getCodCiudadVive()== null || "-1".equals(bkp.getCodCiudadVive().toString())){
+			payload.put("cuidad", "17");
+		}else {
+			payload.put("cuidad", bkp.getCodCiudadVive().toString());
+		}
+		// payload.put("provincia", bkp.getCodProvinciaVive() != null ? bkp.getCodProvinciaVive().toString() : "17");
+		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
 		payload.put("local", "001");
-		payload.put("departamento", usuario.getCodDepartamento() != null ? usuario.getCodDepartamento().toString() : "");
-		payload.put("puesto", String.valueOf(usuario.getCodCargentiexte()));
+		
+		if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
+			payload.put("departamento", "1000");
+		}else {
+			payload.put("departamento", usuario.getCodDepartamento().toString());
+		}
+		if(usuario.getCodCargentiexte()== null || "-1".equals(usuario.getCodCargentiexte().toString())){
+			payload.put("puesto", "1000");
+		}else {
+			payload.put("puesto", bkp.getCodCiudadVive().toString());
+		}		
+		//payload.put("departamento", usuario.getCodDepartamento() != null ? usuario.getCodDepartamento().toString() : "");
+		//payload.put("puesto", String.valueOf(usuario.getCodCargentiexte()));
 		payload.put("ingreso", bkp.getFechaIngreso() != null ? bkp.getFechaIngreso().format(dtf) : "");
 		payload.put("salida", bkp.getFechaSalida() != null ? bkp.getFechaSalida().format(dtf) : "");
 

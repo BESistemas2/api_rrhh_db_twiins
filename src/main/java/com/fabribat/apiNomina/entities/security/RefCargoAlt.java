@@ -16,7 +16,7 @@ public class RefCargoAlt implements Serializable {
 
 	@Id
 	@Column(name="cod_cargo")
-	private short codCargo;
+	private Short codCargo;
 
 	@Column(name="cod_departamento")
 	private Short codDepartamento;
@@ -63,11 +63,11 @@ public class RefCargoAlt implements Serializable {
 	public RefCargoAlt() {
 	}
 
-	public short getCodCargo() {
+	public Short getCodCargo() {
 		return this.codCargo;
 	}
 
-	public void setCodCargo(short codCargo) {
+	public void setCodCargo(Short codCargo) {
 		this.codCargo = codCargo;
 	}
 
