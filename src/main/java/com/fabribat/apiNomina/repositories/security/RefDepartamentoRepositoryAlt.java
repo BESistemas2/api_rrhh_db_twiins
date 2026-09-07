@@ -7,4 +7,5 @@ import com.fabribat.apiNomina.entities.security.RefDepartamentoAlt;
 public interface RefDepartamentoRepositoryAlt extends CrudRepository<RefDepartamentoAlt, Short> {
     List<RefDepartamentoAlt> findAll();
     List<RefDepartamentoAlt> findByEstDepartamento(String estDepartamento);
+    List<RefDepartamentoAlt> findByEstDepartamentoIn(List<String> estados);
 }

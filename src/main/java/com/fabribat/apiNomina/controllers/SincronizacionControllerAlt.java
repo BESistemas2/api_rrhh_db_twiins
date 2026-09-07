@@ -1,5 +1,6 @@
 package com.fabribat.apiNomina.controllers;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +21,7 @@ public class SincronizacionControllerAlt {
     private SincronizacionServiceAlt syncService;
 
     // =========================================================================
-    // ENDPOINTS INDIVIDUALES (EXISTENTES - SIN CAMBIOS)
+    // ENDPOINTS INDIVIDUALES (EXISTENTES)
     // =========================================================================
 
     @PostMapping("/sucursal-matriz")
@@ -44,15 +45,9 @@ public class SincronizacionControllerAlt {
     }
 
     // =========================================================================
-    // NUEVOS ENDPOINTS MASIVOS (OPCIONALES)
+    // ENDPOINTS MASIVOS DE SINCRONIZACION (EXISTENTES)
     // =========================================================================
 
-    /**
-     * Sincroniza masivamente toda la empresa (Sucursal, Departamentos, Cargos y Empleados).
-     * @param soloModificados (Opcional, default: true). 
-     *                        Si es true, solo envía registros nuevos o modificados (MD5).
-     *                        Si es false, fuerza el reenvío de todo.
-     */
     @PostMapping("/masiva")
     public ResponseEntity<Map<String, Object>> syncMasivo(
             @RequestParam(defaultValue = "true") boolean soloModificados) {
@@ -64,12 +59,60 @@ public class SincronizacionControllerAlt {
     public ResponseEntity<Map<String, Object>> syncEmpleadosMasivo(
             @RequestParam(defaultValue = "true") boolean soloModificados) {
         Map<String, Object> resumen = null;
-		try {
-			resumen = syncService.sincronizarTodosLosEmpleados(soloModificados);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+        try {
+            resumen = syncService.sincronizarTodosLosEmpleados(soloModificados);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.internalServerError().build();
+        }
         return ResponseEntity.ok(resumen);
+    }
+
+    // =========================================================================
+    // NUEVOS ENDPOINTS MASIVOS DE ELIMINACION VIA SOAP
+    // =========================================================================
+
+    /**
+     * Elimina en ORPHEUS todos los departamentos con estado 'I' o 'X' en la BD.
+     */
+    @PostMapping("/departamentos/eliminar-inactivos")
+    public ResponseEntity<Map<String, Object>> eliminarDepartamentosInactivos() {
+        try {
+            Map<String, Object> resumen = syncService.eliminarDepartamentosInactivosSoap();
+            return ResponseEntity.ok(resumen);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Elimina en ORPHEUS todos los cargos/puestos con estado 'I' o 'X' en la BD.
+     */
+    @PostMapping("/cargos/eliminar-inactivos")
+    public ResponseEntity<Map<String, Object>> eliminarCargosInactivos() {
+        try {
+            Map<String, Object> resumen = syncService.eliminarCargosInactivosSoap();
+            return ResponseEntity.ok(resumen);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Ejecuta la purga masiva de departamentos y cargos inactivos en un solo proceso.
+     */
+    @PostMapping("/purgar-inactivos-masivo")
+    public ResponseEntity<Map<String, Object>> purgarInactivosMasivo() {
+        try {
+            Map<String, Object> resultado = new HashMap<>();
+            resultado.put("departamentos", syncService.eliminarDepartamentosInactivosSoap());
+            resultado.put("cargos", syncService.eliminarCargosInactivosSoap());
+            return ResponseEntity.ok(resultado);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

@@ -83,6 +83,9 @@ public class SincronizacionServiceAlt {
 
 	@Autowired
 	private SincronizacionLogRepository syncLogRepo;
+	
+	@Autowired
+	private OrpheusSoapClient orpheusSoapClient;
 
 	// =========================================================================
 	// METODOS AUXILIARES DE CONTROL LOCAL
@@ -652,5 +655,71 @@ public class SincronizacionServiceAlt {
 		item.put("usrGerentecost", d.getUsrGerentecost());
 		item.put("usrGerentesier", d.getUsrGerentesier());
 		return item;
+	}
+	
+	// =========================================================================
+	// ELIMINACIÓN MASIVA VÍA SOAP
+	// =========================================================================
+
+	public Map<String, Object> eliminarDepartamentosInactivosSoap() throws InterruptedException {
+	    // Busca registros en BD con estado 'I' o 'X'
+	    List<RefDepartamentoAlt> inactivos = departamentoRepoAlt.findByEstDepartamentoIn(List.of("I", "X"));
+	    
+	    int total = inactivos.size();
+	    int procesados = 0;
+	    int errores = 0;
+
+	    for (RefDepartamentoAlt d : inactivos) {
+	        Thread.sleep(50);
+	        String codigoStr = String.valueOf(d.getCodDepartamento());
+	        
+	        // Petición SOAP enviando entidad 47[cite: 2]
+	        String res = orpheusSoapClient.eliminaDepartamento(114, codigoStr);
+	        
+	        if ("1".equals(res) || (res != null && res.contains(">1<"))) {
+	            procesados++;
+	            registrarSincronizacion("DEPARTAMENTO_ELIMINADO_SOAP", codigoStr, "ELIMINADO", res);
+	        } else {
+	            errores++;
+	            registrarSincronizacion("DEPARTAMENTO_ELIMINADO_SOAP_ERROR", codigoStr, "ERROR", res);
+	        }
+	    }
+
+	    Map<String, Object> resumen = new HashMap<>();
+	    resumen.put("total_inactivos_db", total);
+	    resumen.put("eliminados_exitosos", procesados);
+	    resumen.put("errores_o_en_uso", errores); // ORPHEUS rechaza si el depto está asignado a un empleado[cite: 2]
+	    return resumen;
+	}
+
+	public Map<String, Object> eliminarCargosInactivosSoap() throws InterruptedException {
+	    // Busca registros en BD con estado 'I' o 'X'
+	    List<RefCargoAlt> inactivos = cargoRepoAlt.findByEstCargoIn(List.of("I", "X"));
+	    
+	    int total = inactivos.size();
+	    int procesados = 0;
+	    int errores = 0;
+
+	    for (RefCargoAlt c : inactivos) {
+	        Thread.sleep(50);
+	        String codigoStr = String.valueOf(c.getCodCargo());
+	        
+	        // Petición SOAP enviando entidad 47 (ejecuta eliminaPuesto)[cite: 2]
+	        String res = orpheusSoapClient.eliminaPuesto(114, codigoStr);
+	        
+	        if ("1".equals(res) || (res != null && res.contains(">1<"))) {
+	            procesados++;
+	            registrarSincronizacion("CARGO_ELIMINADO_SOAP", codigoStr, "ELIMINADO", res);
+	        } else {
+	            errores++;
+	            registrarSincronizacion("CARGO_ELIMINADO_SOAP_ERROR", codigoStr, "ERROR", res);
+	        }
+	    }
+
+	    Map<String, Object> resumen = new HashMap<>();
+	    resumen.put("total_inactivos_db", total);
+	    resumen.put("eliminados_exitosos", procesados);
+	    resumen.put("errores_o_en_uso", errores);
+	    return resumen;
 	}
 }
