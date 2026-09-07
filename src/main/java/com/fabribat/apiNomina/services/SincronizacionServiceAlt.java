@@ -327,11 +327,14 @@ public class SincronizacionServiceAlt {
 		Map<String, Object> cargos;
 		Map<String, Object> empleados;
 		Map<String, Object> resumenGeneral = new HashMap<>();
+		String matriz;
 		try {
+			matriz = sincronizarSucursalPorDefecto();
 			deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
 			cargos = sincronizarTodosLosCargosAlt(soloModificados);
 			empleados = sincronizarTodosLosEmpleados(soloModificados);
 			
+			resumenGeneral.put("matriz", matriz);
 			resumenGeneral.put("departamentos", deptos);
 			resumenGeneral.put("cargos", cargos);
 			resumenGeneral.put("empleados", empleados);
