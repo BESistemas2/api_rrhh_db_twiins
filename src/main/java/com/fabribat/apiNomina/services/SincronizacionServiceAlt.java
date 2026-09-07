@@ -684,10 +684,10 @@ public class SincronizacionServiceAlt {
 	        
 	        if ("1".equals(res) || (res != null && res.contains(">1<"))) {
 	            procesados++;
-	            registrarSincronizacion("DEPARTAMENTO_ELIMINADO_SOAP", codigoStr, "ELIMINADO", res);
+	            registrarSincronizacion("DEPARTAMENTOe", codigoStr, "ELIMINADO", res);
 	        } else {
 	            errores++;
-	            registrarSincronizacion("DEPARTAMENTO_ELIMINADO_SOAP_ERROR", codigoStr, "ERROR", res);
+	            registrarSincronizacion("DEPARTAMENTOe E", codigoStr, "ERROR", res);
 	        }
 	    }
 
@@ -715,10 +715,10 @@ public class SincronizacionServiceAlt {
 	        
 	        if ("1".equals(res) || (res != null && res.contains(">1<"))) {
 	            procesados++;
-	            registrarSincronizacion("CARGO_ELIMINADO_SOAP", codigoStr, "ELIMINADO", res);
+	            registrarSincronizacion("CARGOe", codigoStr, "ELIMINADO", res);
 	        } else {
 	            errores++;
-	            registrarSincronizacion("CARGO_ELIMINADO_SOAP_ERROR", codigoStr, "ERROR", res);
+	            registrarSincronizacion("CARGOe E", codigoStr, "ERROR", res);
 	        }
 	    }
 
