@@ -28,9 +28,9 @@ public class SincronizacionLog {
 	@Column(name = "fecha_ultimo_sync", nullable = false)
 	private LocalDateTime fechaUltimoSync;
 
-	@Column(name = "resultado", length = 255)
+	@Column(name = "resultado", columnDefinition = "TEXT")
 	private String resultado;
-
+	
 	public SincronizacionLog() {
 	}
 
