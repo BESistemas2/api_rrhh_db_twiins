@@ -108,14 +108,20 @@ public class SincronizacionServiceAlt {
 	}
 
 	private void registrarSincronizacion(String tipoEntidad, String codigo, String hash, String resultado) {
-		Optional<SincronizacionLog> logOpt = syncLogRepo.findByTipoEntidadAndCodigoEntidad(tipoEntidad, codigo);
-		SincronizacionLog logEntity = logOpt.orElse(new SincronizacionLog());
-		logEntity.setTipoEntidad(tipoEntidad);
-		logEntity.setCodigoEntidad(codigo);
-		logEntity.setHashContenido(hash);
-		logEntity.setFechaUltimoSync(LocalDateTime.now());
-		logEntity.setResultado(resultado);
-		syncLogRepo.save(logEntity);
+	    Optional<SincronizacionLog> logOpt = syncLogRepo.findByTipoEntidadAndCodigoEntidad(tipoEntidad, codigo);
+	    SincronizacionLog logEntity = logOpt.orElse(new SincronizacionLog());
+	    logEntity.setTipoEntidad(tipoEntidad);
+	    logEntity.setCodigoEntidad(codigo);
+	    logEntity.setHashContenido(hash);
+	    logEntity.setFechaUltimoSync(LocalDateTime.now());
+
+	    // Asegura que no sobrepase los 250 caracteres si el XML de respuesta es muy largo
+	    if (resultado != null && resultado.length() > 250) {
+	        resultado = resultado.substring(0, 245) + "...";
+	    }
+
+	    logEntity.setResultado(resultado);
+	    syncLogRepo.save(logEntity);
 	}
 
 	// =========================================================================
