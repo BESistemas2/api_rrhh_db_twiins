@@ -385,7 +385,7 @@ public class SincronizacionServiceAlt {
 		payload.put("nombres", usuario.getNomUsuario());
 		payload.put("apellidos", usuario.getApeUsuario());
 		payload.put("nacimiento", bkp.getFechaNacimiento() != null ? bkp.getFechaNacimiento().format(dtf) : "");
-		payload.put("sexo", usuario.getSexUsuario() != null ? usuario.getSexUsuario() : "M");
+		payload.put("sexo", usuario.getGenUsuario() != null ? usuario.getGenUsuario() : "M");
 		payload.put("estado_civil", traducirEstadoCivil(bkp.getEstadoCivil()));
 		payload.put("instruccion", "7");
 		if(bkp.getCodProvinciaVive()== null || "-1".equals(bkp.getCodProvinciaVive().toString())){
@@ -394,9 +394,9 @@ public class SincronizacionServiceAlt {
 			payload.put("provincia", bkp.getCodProvinciaVive().toString());
 		}
 		if(bkp.getCodCiudadVive()== null || "-1".equals(bkp.getCodCiudadVive().toString())){
-			payload.put("cuidad", "17");
+			payload.put("ciudad", "17");
 		}else {
-			payload.put("cuidad", bkp.getCodCiudadVive().toString());
+			payload.put("ciudad", bkp.getCodCiudadVive().toString());
 		}
 		// payload.put("provincia", bkp.getCodProvinciaVive() != null ? bkp.getCodProvinciaVive().toString() : "17");
 		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
@@ -410,7 +410,7 @@ public class SincronizacionServiceAlt {
 		if(usuario.getCodCargentiexte()== null || "-1".equals(usuario.getCodCargentiexte().toString())){
 			payload.put("puesto", "1000");
 		}else {
-			payload.put("puesto", bkp.getCodCiudadVive().toString());
+			payload.put("puesto", usuario.getCodCargentiexte().toString());
 		}		
 		//payload.put("departamento", usuario.getCodDepartamento() != null ? usuario.getCodDepartamento().toString() : "");
 		//payload.put("puesto", String.valueOf(usuario.getCodCargentiexte()));
