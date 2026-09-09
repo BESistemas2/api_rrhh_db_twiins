@@ -43,7 +43,7 @@ import com.fabribat.apiNomina.repositories.security.RefProvinciaRepositoryAlt;
 @Service
 public class SincronizacionService {
 	
-	private static final Logger log = LoggerFactory.getLogger(SincronizacionServiceAlt.class);
+	private static final Logger log = LoggerFactory.getLogger(SincronizacionService.class);
 
 	@Autowired
 	private OrpheusRestClient orpheusClient;
@@ -111,6 +111,12 @@ public class SincronizacionService {
 		logEntity.setCodigoEntidad(codigo);
 		logEntity.setHashContenido(hash);
 		logEntity.setFechaUltimoSync(LocalDateTime.now());
+		
+	    // Asegura que no sobrepase los 250 caracteres si el XML de respuesta es muy largo
+	    if (resultado != null && resultado.length() > 250) {
+	        resultado = resultado.substring(0, 245) + "...";
+	    }
+	    
 		logEntity.setResultado(resultado);
 		syncLogRepo.save(logEntity);
 	}
@@ -164,7 +170,7 @@ public class SincronizacionService {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosDepartamentos(boolean soloModificados) {
+	public Map<String, Object> sincronizarTodosLosDepartamentos(boolean soloModificados) throws InterruptedException {
 		List<RefDepartamento> deptos = departamentoRepo.findAll();
 		int total = deptos.size();
 		int procesados = 0;
@@ -172,6 +178,7 @@ public class SincronizacionService {
 		int errores = 0;
 
 		for (RefDepartamento d : deptos) {
+			Thread.sleep(100);
 			String res = sincronizarDepartamento(String.valueOf(d.getCodDepartamento()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -227,7 +234,7 @@ public class SincronizacionService {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosCargos(boolean soloModificados) {
+	public Map<String, Object> sincronizarTodosLosCargos(boolean soloModificados) throws InterruptedException {
 		List<RefCargo> cargos = cargoRepo.findAll();
 		int total = cargos.size();
 		int procesados = 0;
@@ -235,6 +242,7 @@ public class SincronizacionService {
 		int errores = 0;
 
 		for (RefCargo c : cargos) {
+			Thread.sleep(100);
 			String res = sincronizarCargo(String.valueOf(c.getCodCargo()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -279,7 +287,7 @@ public class SincronizacionService {
 
 		String respuesta = orpheusClient.setEmpleado(payload);
 		
-		if (respuesta != null && respuesta.trim().equalsIgnoreCase("TRUE")) {
+		if (respuesta != null && respuesta.contains("TRUE")) {
 			log.info("Empleado sincronizado exitosamente: cédula={}, nombre={} {}", 
 				cedula, usuario.getNomUsuario(), usuario.getApeUsuario());
 			registrarSincronizacion("EMPLEADO", cedula, hash, respuesta);
@@ -292,7 +300,7 @@ public class SincronizacionService {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) {
+	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) throws InterruptedException {
 		List<RefUsuario> activos = usuarioRepo.findByEstUsuario("A");
 		int total = activos.size();
 		int procesados = 0;
@@ -300,6 +308,7 @@ public class SincronizacionService {
 		int errores = 0;
 
 		for (RefUsuario u : activos) {
+			Thread.sleep(100);
 			String res = sincronizarEmpleado(u.getCedUsuario(), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -318,18 +327,32 @@ public class SincronizacionService {
 		return resumen;
 	}
 
-	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados) {
+	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados){
 		sincronizarSucursalPorDefecto();
-		Map<String, Object> deptos = sincronizarTodosLosDepartamentos(soloModificados);
-		Map<String, Object> cargos = sincronizarTodosLosCargos(soloModificados);
-		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
-
+		Map<String, Object> deptos;
+		Map<String, Object> cargos;
+		Map<String, Object> empleados;
 		Map<String, Object> resumenGeneral = new HashMap<>();
-		resumenGeneral.put("departamentos", deptos);
-		resumenGeneral.put("cargos", cargos);
-		resumenGeneral.put("empleados", empleados);
+		String matriz;
+		try {
+			matriz = sincronizarSucursalPorDefecto();
+			deptos = sincronizarTodosLosDepartamentos(soloModificados);
+			cargos = sincronizarTodosLosCargos(soloModificados);
+			empleados = sincronizarTodosLosEmpleados(soloModificados);
+			
+			resumenGeneral.put("matriz", matriz);
+			resumenGeneral.put("departamentos", deptos);
+			resumenGeneral.put("cargos", cargos);
+			resumenGeneral.put("empleados", empleados);
+			
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return resumenGeneral;
+		
 	}
+
 
 	// =========================================================================
 	// UTILERIAS & PAYLOAD HELPERS
@@ -353,21 +376,42 @@ public class SincronizacionService {
 		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
 		if (includeEntidad) {
-			payload.put("entidad", "47");
+			payload.put("entidad", "114");
 		}
 
 		payload.put("cedula", usuario.getCedUsuario());
 		payload.put("nombres", usuario.getNomUsuario());
 		payload.put("apellidos", usuario.getApeUsuario());
 		payload.put("nacimiento", bkp.getFechaNacimiento() != null ? bkp.getFechaNacimiento().format(dtf) : "");
-		payload.put("sexo", usuario.getSexUsuario() != null ? usuario.getSexUsuario() : "M");
+		payload.put("sexo", usuario.getGenUsuario() != null ? usuario.getGenUsuario() : "M");
 		payload.put("estado_civil", traducirEstadoCivil(bkp.getEstadoCivil()));
 		payload.put("instruccion", "7");
-		payload.put("provincia", bkp.getCodProvinciaVive() != null ? bkp.getCodProvinciaVive().toString() : "17");
-		payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
+		if(bkp.getCodProvinciaVive()== null || "-1".equals(bkp.getCodProvinciaVive().toString())){
+			payload.put("provincia", "17");
+		}else {
+			payload.put("provincia", bkp.getCodProvinciaVive().toString());
+		}
+		if(bkp.getCodCiudadVive()== null || "-1".equals(bkp.getCodCiudadVive().toString())){
+			payload.put("ciudad", "17");
+		}else {
+			payload.put("ciudad", bkp.getCodCiudadVive().toString());
+		}
+		// payload.put("provincia", bkp.getCodProvinciaVive() != null ? bkp.getCodProvinciaVive().toString() : "17");
+		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
 		payload.put("local", "001");
-		payload.put("departamento", usuario.getCodDepartamento() != null ? usuario.getCodDepartamento().toString() : "");
-		payload.put("puesto", String.valueOf(usuario.getCodCargentiexte()));
+		
+		if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
+			payload.put("departamento", "1000");
+		}else {
+			payload.put("departamento", usuario.getCodDepartamento().toString());
+		}
+		if(usuario.getCodCargentiexte()== null || "-1".equals(usuario.getCodCargentiexte().toString())){
+			payload.put("puesto", "1000");
+		}else {
+			payload.put("puesto", usuario.getCodCargentiexte().toString());
+		}		
+		//payload.put("departamento", usuario.getCodDepartamento() != null ? usuario.getCodDepartamento().toString() : "");
+		//payload.put("puesto", String.valueOf(usuario.getCodCargentiexte()));
 		payload.put("ingreso", bkp.getFechaIngreso() != null ? bkp.getFechaIngreso().format(dtf) : "");
 		payload.put("salida", bkp.getFechaSalida() != null ? bkp.getFechaSalida().format(dtf) : "");
 
@@ -375,8 +419,9 @@ public class SincronizacionService {
 		if (bkp.getDireccionPrincipal() != null) direccionCompleta.append(bkp.getDireccionPrincipal());
 		if (bkp.getDireccionNumero() != null) direccionCompleta.append(" ").append(bkp.getDireccionNumero());
 		if (bkp.getDireccionSecundaria() != null) direccionCompleta.append(" Y ").append(bkp.getDireccionSecundaria());
-		if (bkp.getDireccionReferencia() != null) direccionCompleta.append(" - REF: ").append(bkp.getDireccionReferencia());
 		if (bkp.getDireccionBarrio() != null) direccionCompleta.append(" - ").append(bkp.getDireccionBarrio());
+		if (bkp.getDireccionReferencia() != null) direccionCompleta.append(" - REF: ").append(bkp.getDireccionReferencia());
+
 
 		payload.put("direccion", direccionCompleta.toString().trim());
 		payload.put("telefono", "");
@@ -387,7 +432,6 @@ public class SincronizacionService {
 
 		return payload;
 	}
-
 	// =========================================================================
 	// CONSULTA DE CATALOGOS
 	// =========================================================================
@@ -615,4 +659,65 @@ public class SincronizacionService {
 		item.put("usrGerentesier", d.getUsrGerentesier());
 		return item;
 	}
+	
+	// ====================================================================
+	// SINCRONIZACIÓN AUTOMATICA
+	// ====================================================================
+	
+	// Ejecuta cada 5 minutos (300,000 ms).
+		@org.springframework.scheduling.annotation.Scheduled(fixedDelay = 300000)
+		public void orquestadorSincronizacionAutomatica() {
+			log.info("--- INICIANDO CICLO DE SINCRONIZACIÓN AUTOMÁTICA ---");
+
+			try {
+				// ====================================================================
+				// 1. SINCRONIZACIÓN DE CATÁLOGOS (Padres)
+				// ====================================================================
+				log.info("Verificando cambios en Departamentos...");
+				sincronizarTodosLosDepartamentos(true);
+
+				log.info("Verificando cambios en Cargos...");
+				sincronizarTodosLosCargos(true);
+
+				// ====================================================================
+				// 2. SINCRONIZACIÓN DE EMPLEADOS (Hijos)
+				// ====================================================================
+				log.info("Verificando novedades de Empleados en BkpUsuario...");
+				SincronizacionLog tracker = syncLogRepo.findByTipoEntidadAndCodigoEntidad("TRACKER", "BKP_USUARIO")
+						.orElseGet(() -> {
+							SincronizacionLog nuevo = new SincronizacionLog();
+							nuevo.setTipoEntidad("TRACKER");
+							nuevo.setCodigoEntidad("BKP_USUARIO");
+							nuevo.setHashContenido("N/A"); // Obligatorio en tu entidad
+							nuevo.setResultado("0");       // Empezamos desde el código cero
+							nuevo.setFechaUltimoSync(LocalDateTime.now());
+							return nuevo;
+						});
+
+				Long ultimoCodigo = Long.parseLong(tracker.getResultado());
+				List<BkpUsuario> novedades = bkpRepo.findByCambCodigoGreaterThanOrderByCambCodigoAsc(ultimoCodigo);
+				
+				if (!novedades.isEmpty()) {
+					log.info("Se encontraron {} novedades de empleados.", novedades.size());
+					for (BkpUsuario novedad : novedades) {
+						// Sincroniza al empleado asegurando que sus catálogos ya existen
+						sincronizarEmpleado(novedad.getCedUsuario(), true);
+						
+						// Actualiza el puntero localmente en cada iteración
+						ultimoCodigo = novedad.getCambCodigo();
+					}
+					// Guarda el nuevo récord en la BD
+					tracker.setResultado(String.valueOf(ultimoCodigo));
+					tracker.setFechaUltimoSync(LocalDateTime.now());
+					syncLogRepo.save(tracker);
+				} else {
+					log.info("No hay nuevas actualizaciones de empleados en bkp_usuario.");
+				}
+
+				log.info("--- CICLO DE SINCRONIZACIÓN FINALIZADO EXITOSAMENTE ---");
+
+			} catch (Exception e) {
+				log.error("Error crítico durante el ciclo de sincronización automática", e);
+			}
+		}
 }

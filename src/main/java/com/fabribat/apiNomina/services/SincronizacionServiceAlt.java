@@ -43,7 +43,7 @@ import com.fabribat.apiNomina.repositories.security.RefProvinciaRepositoryAlt;
 @Service
 public class SincronizacionServiceAlt {
 	
-	private static final Logger log = LoggerFactory.getLogger(SincronizacionService.class);
+	private static final Logger log = LoggerFactory.getLogger(SincronizacionServiceAlt.class);
 
 	@Autowired
 	private OrpheusRestClient orpheusClient;
@@ -181,7 +181,7 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefDepartamentoAlt d : deptos) {
-			Thread.sleep(50);
+			Thread.sleep(100);
 			String res = sincronizarDepartamentoAlt(String.valueOf(d.getCodDepartamento()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -245,7 +245,7 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefCargoAlt c : cargos) {
-			Thread.sleep(50);
+			Thread.sleep(100);
 			String res = sincronizarCargoAlt(String.valueOf(c.getCodCargo()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -290,7 +290,7 @@ public class SincronizacionServiceAlt {
 
 		String respuesta = orpheusClient.setEmpleado(payload);
 		
-		if (respuesta != null && respuesta.trim().equalsIgnoreCase("TRUE")) {
+		if (respuesta != null && respuesta.contains("TRUE")) {
 			log.info("Empleado sincronizado exitosamente: cédula={}, nombre={} {}", 
 				cedula, usuario.getNomUsuario(), usuario.getApeUsuario());
 			registrarSincronizacion("EMPLEADO", cedula, hash, respuesta);
@@ -311,7 +311,7 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefUsuario u : activos) {
-			Thread.sleep(50);
+			Thread.sleep(100);
 			String res = sincronizarEmpleado(u.getCedUsuario(), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -378,7 +378,7 @@ public class SincronizacionServiceAlt {
 		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
 		if (includeEntidad) {
-			payload.put("entidad", "47");
+			payload.put("entidad", "114");
 		}
 
 		payload.put("cedula", usuario.getCedUsuario());
@@ -728,4 +728,165 @@ public class SincronizacionServiceAlt {
 	    resumen.put("errores_o_en_uso", errores);
 	    return resumen;
 	}
+	
+	// ====================================================================
+	// SINCRONIZACIÓN AUTOMATICA
+	// ====================================================================
+	
+		// ====================================================================
+		// PUENTE: AUTO-LLENADO DE TABLAS ALT (MIDDLEWARE)
+		// ====================================================================
+		public void refrescarDepartamentosAlt() {
+			log.info("Sincronizando tabla Original de Departamentos hacia tabla Alt...");
+			List<RefDepartamento> originales = departamentoRepo.findAll();
+			
+			for (RefDepartamento orig : originales) {
+				Optional<RefDepartamentoAlt> altOpt = departamentoRepoAlt.findById(orig.getCodDepartamento());
+				
+				if (altOpt.isEmpty()) {
+					// 1. REGLA: Es NUEVO. Lo insertamos en la tabla Alt.
+					RefDepartamentoAlt nuevoAlt = new RefDepartamentoAlt();
+					nuevoAlt.setCodDepartamento(orig.getCodDepartamento());
+					nuevoAlt.setNomDepartamento(orig.getNomDepartamento());
+					nuevoAlt.setEstDepartamento(orig.getEstDepartamento());
+					// Nota: Si tu entidad RefDepartamentoAlt exige más campos NOT NULL (ej. descripcion), agrégalos aquí.
+					departamentoRepoAlt.save(nuevoAlt);
+					log.info("Nuevo departamento clonado en Alt: {}", orig.getCodDepartamento());
+				} else {
+					// Ya existe. Revisamos si hay que actualizar.
+					RefDepartamentoAlt alt = altOpt.get();
+					boolean cambiado = false;
+					
+					// 2. REGLA DE ORO: Si en el original se inactivó, obligatoriamente lo inactivamos en Alt.
+					if (("I".equals(orig.getEstDepartamento()) || "X".equals(orig.getEstDepartamento())) 
+							&& "A".equals(alt.getEstDepartamento())) {
+						alt.setEstDepartamento(orig.getEstDepartamento());
+						cambiado = true;
+						log.info("Departamento {} inactivado desde la BD Original", orig.getCodDepartamento());
+					}
+					
+					// 3. REGLA: Si cambiaron el nombre en el sistema original, lo actualizamos.
+					if (orig.getNomDepartamento() != null && !orig.getNomDepartamento().equals(alt.getNomDepartamento())) {
+						alt.setNomDepartamento(orig.getNomDepartamento());
+						cambiado = true;
+					}
+					
+					// Si hubo cambios válidos, guardamos. (Si en Alt estaba 'I' y en orig 'A', NO entra aquí).
+					if (cambiado) {
+						departamentoRepoAlt.save(alt);
+					}
+				}
+			}
+		}
+
+		public void refrescarCargosAlt() {
+			log.info("Sincronizando tabla Original de Cargos hacia tabla Alt...");
+			List<RefCargo> originales = cargoRepo.findAll();
+			
+			for (RefCargo orig : originales) {
+				Optional<RefCargoAlt> altOpt = cargoRepoAlt.findById(orig.getCodCargo());
+				
+				if (altOpt.isEmpty()) {
+					// 1. REGLA: Es NUEVO. Lo insertamos en la tabla Alt.
+					RefCargoAlt nuevoAlt = new RefCargoAlt();
+					nuevoAlt.setCodCargo(orig.getCodCargo());
+					nuevoAlt.setNomCargo(orig.getNomCargo());
+					nuevoAlt.setEstCargo(orig.getEstCargo());
+					nuevoAlt.setCodDepartamento(orig.getCodDepartamento());
+					// Nota: Si tu entidad exige más campos NOT NULL, agrégalos aquí.
+					cargoRepoAlt.save(nuevoAlt);
+					log.info("Nuevo cargo clonado en Alt: {}", orig.getCodCargo());
+				} else {
+					// Ya existe.
+					RefCargoAlt alt = altOpt.get();
+					boolean cambiado = false;
+					
+					// 2. REGLA DE ORO: Si en el original se inactivó, obligatoriamente inactivamos en Alt.
+					if (("I".equals(orig.getEstCargo()) || "X".equals(orig.getEstCargo())) 
+							&& "A".equals(alt.getEstCargo())) {
+						alt.setEstCargo(orig.getEstCargo());
+						cambiado = true;
+						log.info("Cargo {} inactivado desde la BD Original", orig.getCodCargo());
+					}
+					
+					// 3. REGLA: Si cambiaron el nombre o el departamento al que pertenece, lo actualizamos.
+					if (orig.getNomCargo() != null && !orig.getNomCargo().equals(alt.getNomCargo())) {
+						alt.setNomCargo(orig.getNomCargo());
+						cambiado = true;
+					}
+					if (orig.getCodDepartamento() != null && !orig.getCodDepartamento().equals(alt.getCodDepartamento())) {
+						alt.setCodDepartamento(orig.getCodDepartamento());
+						cambiado = true;
+					}
+
+					if (cambiado) {
+						cargoRepoAlt.save(alt);
+					}
+				}
+			}
+		}
+		
+		// ====================================================================
+		// SINCRONIZACIÓN AUTOMATICA CRON JOB
+		// ====================================================================
+	
+		// Ejecuta cada 5 minutos (300,000 ms).
+		@org.springframework.scheduling.annotation.Scheduled(fixedDelay = 300000)
+		public void orquestadorSincronizacionAutomatica() {
+			log.info("--- INICIANDO CICLO DE SINCRONIZACIÓN AUTOMÁTICA ---");
+
+			try {
+				// ====================================================================
+				// 1. AUTO-LLENADO DEL MIDDLEWARE (Original -> Alt)
+				// ====================================================================
+				log.info("Iniciando puentes de datos Original a Alt...");
+				refrescarDepartamentosAlt();
+				refrescarCargosAlt();
+
+				// ====================================================================
+				// 2. SINCRONIZACIÓN DE CATÁLOGOS A ORPHEUS (Desde Alt)
+				// ====================================================================
+				log.info("Verificando cambios de Alt hacia Orpheus en Departamentos...");
+				sincronizarTodosLosDepartamentosAlt(true);
+
+				log.info("Verificando cambios de Alt hacia Orpheus en Cargos...");
+				sincronizarTodosLosCargosAlt(true);
+
+				// ====================================================================
+				// 3. SINCRONIZACIÓN DE EMPLEADOS (Hijos)
+				// ====================================================================
+				log.info("Verificando novedades de Empleados en BkpUsuario...");
+				SincronizacionLog tracker = syncLogRepo.findByTipoEntidadAndCodigoEntidad("TRACKER", "BKP_USUARIO")
+						.orElseGet(() -> {
+							SincronizacionLog nuevo = new SincronizacionLog();
+							nuevo.setTipoEntidad("TRACKER");
+							nuevo.setCodigoEntidad("BKP_USUARIO");
+							nuevo.setHashContenido("N/A"); 
+							nuevo.setResultado("0");       
+							nuevo.setFechaUltimoSync(LocalDateTime.now());
+							return nuevo;
+						});
+
+				Long ultimoCodigo = Long.parseLong(tracker.getResultado());
+				List<BkpUsuario> novedades = bkpRepo.findByCambCodigoGreaterThanOrderByCambCodigoAsc(ultimoCodigo);
+				
+				if (!novedades.isEmpty()) {
+					log.info("Se encontraron {} novedades de empleados.", novedades.size());
+					for (BkpUsuario novedad : novedades) {
+						sincronizarEmpleado(novedad.getCedUsuario(), true);
+						ultimoCodigo = novedad.getCambCodigo();
+					}
+					tracker.setResultado(String.valueOf(ultimoCodigo));
+					tracker.setFechaUltimoSync(LocalDateTime.now());
+					syncLogRepo.save(tracker);
+				} else {
+					log.info("No hay nuevas actualizaciones de empleados en bkp_usuario.");
+				}
+
+				log.info("--- CICLO DE SINCRONIZACIÓN FINALIZADO EXITOSAMENTE ---");
+
+			} catch (Exception e) {
+				log.error("Error crítico durante el ciclo de sincronización automática", e);
+			}
+		}
 }
