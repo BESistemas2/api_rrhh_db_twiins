@@ -176,7 +176,7 @@ public class SincronizacionServiceAlt {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosDepartamentosAlt(boolean soloModificados) throws InterruptedException {
+	public Map<String, Object> sincronizarTodosLosDepartamentosAlt(boolean soloModificados) {
 		List<RefDepartamentoAlt> deptos = departamentoRepoAlt.findByEstDepartamento("A");
 		int total = deptos.size();
 		int procesados = 0;
@@ -184,7 +184,11 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefDepartamentoAlt d : deptos) {
-			Thread.sleep(600);
+			try {
+				Thread.sleep(600);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 			String res = sincronizarDepartamentoAlt(String.valueOf(d.getCodDepartamento()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -240,7 +244,7 @@ public class SincronizacionServiceAlt {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosCargosAlt(boolean soloModificados) throws InterruptedException {
+	public Map<String, Object> sincronizarTodosLosCargosAlt(boolean soloModificados) {
 		List<RefCargoAlt> cargos = cargoRepoAlt.findByEstCargo("A");
 		int total = cargos.size();
 		int procesados = 0;
@@ -248,7 +252,11 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefCargoAlt c : cargos) {
-			Thread.sleep(600);
+			try {
+				Thread.sleep(600);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 			String res = sincronizarCargoAlt(String.valueOf(c.getCodCargo()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -306,7 +314,7 @@ public class SincronizacionServiceAlt {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) throws InterruptedException {
+	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) {
 		List<RefUsuario> activos = usuarioRepo.findByEstUsuario("A");
 		int total = activos.size();
 		int procesados = 0;
@@ -314,7 +322,11 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefUsuario u : activos) {
-			Thread.sleep(600);
+			try {
+				Thread.sleep(600);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 			String res = sincronizarEmpleado(u.getCedUsuario(), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -334,29 +346,19 @@ public class SincronizacionServiceAlt {
 	}
 
 	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados){
-		sincronizarSucursalPorDefecto();
-		Map<String, Object> deptos;
-		Map<String, Object> cargos;
-		Map<String, Object> empleados;
 		Map<String, Object> resumenGeneral = new HashMap<>();
-		String matriz;
-		try {
-			matriz = sincronizarSucursalPorDefecto();
-			deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
-			cargos = sincronizarTodosLosCargosAlt(soloModificados);
-			empleados = sincronizarTodosLosEmpleados(soloModificados);
-			
-			resumenGeneral.put("matriz", matriz);
-			resumenGeneral.put("departamentos", deptos);
-			resumenGeneral.put("cargos", cargos);
-			resumenGeneral.put("empleados", empleados);
-			
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return resumenGeneral;
 		
+		String matriz = sincronizarSucursalPorDefecto();
+		Map<String, Object> deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
+		Map<String, Object> cargos = sincronizarTodosLosCargosAlt(soloModificados);
+		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
+		
+		resumenGeneral.put("matriz", matriz);
+		resumenGeneral.put("departamentos", deptos);
+		resumenGeneral.put("cargos", cargos);
+		resumenGeneral.put("empleados", empleados);
+			
+		return resumenGeneral;
 	}
 
 	// =========================================================================
@@ -670,7 +672,7 @@ public class SincronizacionServiceAlt {
 	// ELIMINACIÓN MASIVA VÍA SOAP
 	// =========================================================================
 
-	public Map<String, Object> eliminarDepartamentosInactivosSoap() throws InterruptedException {
+	public Map<String, Object> eliminarDepartamentosInactivosSoap() {
 	    // Busca registros en BD con estado 'I' o 'X'
 	    List<RefDepartamentoAlt> inactivos = departamentoRepoAlt.findByEstDepartamentoIn(List.of("I", "X"));
 	    
@@ -679,10 +681,14 @@ public class SincronizacionServiceAlt {
 	    int errores = 0;
 
 	    for (RefDepartamentoAlt d : inactivos) {
-	        Thread.sleep(50);
+	        try {
+	            Thread.sleep(50);
+	        } catch (InterruptedException e) {
+	            Thread.currentThread().interrupt();
+	        }
 	        String codigoStr = String.valueOf(d.getCodDepartamento());
 	        
-	        // Petición SOAP enviando entidad 47[cite: 2]
+	        // Petición SOAP enviando entidad 47
 	        String res = orpheusSoapClient.eliminaDepartamento(114, codigoStr);
 	        
 	        if ("1".equals(res) || (res != null && res.contains(">1<"))) {
@@ -697,11 +703,11 @@ public class SincronizacionServiceAlt {
 	    Map<String, Object> resumen = new HashMap<>();
 	    resumen.put("total_inactivos_db", total);
 	    resumen.put("eliminados_exitosos", procesados);
-	    resumen.put("errores_o_en_uso", errores); // ORPHEUS rechaza si el depto está asignado a un empleado[cite: 2]
+	    resumen.put("errores_o_en_uso", errores); 
 	    return resumen;
 	}
 
-	public Map<String, Object> eliminarCargosInactivosSoap() throws InterruptedException {
+	public Map<String, Object> eliminarCargosInactivosSoap() {
 	    // Busca registros en BD con estado 'I' o 'X'
 	    List<RefCargoAlt> inactivos = cargoRepoAlt.findByEstCargoIn(List.of("I", "X"));
 	    
@@ -710,10 +716,14 @@ public class SincronizacionServiceAlt {
 	    int errores = 0;
 
 	    for (RefCargoAlt c : inactivos) {
-	        Thread.sleep(50);
+	        try {
+	            Thread.sleep(50);
+	        } catch (InterruptedException e) {
+	            Thread.currentThread().interrupt();
+	        }
 	        String codigoStr = String.valueOf(c.getCodCargo());
 	        
-	        // Petición SOAP enviando entidad 47 (ejecuta eliminaPuesto)[cite: 2]
+	        // Petición SOAP enviando entidad 47 (ejecuta eliminaPuesto)
 	        String res = orpheusSoapClient.eliminaPuesto(114, codigoStr);
 	        
 	        if ("1".equals(res) || (res != null && res.contains(">1<"))) {

@@ -173,7 +173,7 @@ public class SincronizacionService {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosDepartamentos(boolean soloModificados) throws InterruptedException {
+	public Map<String, Object> sincronizarTodosLosDepartamentos(boolean soloModificados) {
 		List<RefDepartamento> deptos = departamentoRepo.findAll();
 		int total = deptos.size();
 		int procesados = 0;
@@ -181,7 +181,11 @@ public class SincronizacionService {
 		int errores = 0;
 
 		for (RefDepartamento d : deptos) {
-			Thread.sleep(100);
+			try {
+				Thread.sleep(600);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 			String res = sincronizarDepartamento(String.valueOf(d.getCodDepartamento()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -237,7 +241,7 @@ public class SincronizacionService {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosCargos(boolean soloModificados) throws InterruptedException {
+	public Map<String, Object> sincronizarTodosLosCargos(boolean soloModificados) {
 		List<RefCargo> cargos = cargoRepo.findAll();
 		int total = cargos.size();
 		int procesados = 0;
@@ -245,7 +249,11 @@ public class SincronizacionService {
 		int errores = 0;
 
 		for (RefCargo c : cargos) {
-			Thread.sleep(100);
+			try {
+				Thread.sleep(600);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 			String res = sincronizarCargo(String.valueOf(c.getCodCargo()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -303,7 +311,7 @@ public class SincronizacionService {
 		return respuesta;
 	}
 
-	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) throws InterruptedException {
+	public Map<String, Object> sincronizarTodosLosEmpleados(boolean soloModificados) {
 		List<RefUsuario> activos = usuarioRepo.findByEstUsuario("A");
 		int total = activos.size();
 		int procesados = 0;
@@ -311,7 +319,11 @@ public class SincronizacionService {
 		int errores = 0;
 
 		for (RefUsuario u : activos) {
-			Thread.sleep(100);
+			try {
+				Thread.sleep(600);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
 			String res = sincronizarEmpleado(u.getCedUsuario(), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -331,29 +343,19 @@ public class SincronizacionService {
 	}
 
 	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados){
-		sincronizarSucursalPorDefecto();
-		Map<String, Object> deptos;
-		Map<String, Object> cargos;
-		Map<String, Object> empleados;
 		Map<String, Object> resumenGeneral = new HashMap<>();
-		String matriz;
-		try {
-			matriz = sincronizarSucursalPorDefecto();
-			deptos = sincronizarTodosLosDepartamentos(soloModificados);
-			cargos = sincronizarTodosLosCargos(soloModificados);
-			empleados = sincronizarTodosLosEmpleados(soloModificados);
-			
-			resumenGeneral.put("matriz", matriz);
-			resumenGeneral.put("departamentos", deptos);
-			resumenGeneral.put("cargos", cargos);
-			resumenGeneral.put("empleados", empleados);
-			
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return resumenGeneral;
 		
+		String matriz = sincronizarSucursalPorDefecto();
+		Map<String, Object> deptos = sincronizarTodosLosDepartamentos(soloModificados);
+		Map<String, Object> cargos = sincronizarTodosLosCargos(soloModificados);
+		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
+		
+		resumenGeneral.put("matriz", matriz);
+		resumenGeneral.put("departamentos", deptos);
+		resumenGeneral.put("cargos", cargos);
+		resumenGeneral.put("empleados", empleados);
+		
+		return resumenGeneral;
 	}
 
 

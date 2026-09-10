@@ -63,13 +63,7 @@ public class SincronizacionController {
     @PostMapping("/empleados/masivo")
     public ResponseEntity<Map<String, Object>> syncEmpleadosMasivo(
             @RequestParam(defaultValue = "true") boolean soloModificados) {
-        Map<String, Object> resumen = null;
-		try {
-			resumen = syncService.sincronizarTodosLosEmpleados(soloModificados);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+        Map<String, Object> resumen = syncService.sincronizarTodosLosEmpleados(soloModificados);
         return ResponseEntity.ok(resumen);
     }
 }

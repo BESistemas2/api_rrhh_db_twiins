@@ -58,13 +58,7 @@ public class SincronizacionControllerAlt {
     @PostMapping("/empleados/masivo")
     public ResponseEntity<Map<String, Object>> syncEmpleadosMasivo(
             @RequestParam(defaultValue = "true") boolean soloModificados) {
-        Map<String, Object> resumen = null;
-        try {
-            resumen = syncService.sincronizarTodosLosEmpleados(soloModificados);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return ResponseEntity.internalServerError().build();
-        }
+        Map<String, Object> resumen = syncService.sincronizarTodosLosEmpleados(soloModificados);
         return ResponseEntity.ok(resumen);
     }
 
@@ -77,13 +71,8 @@ public class SincronizacionControllerAlt {
      */
     @PostMapping("/departamentos/eliminar-inactivos")
     public ResponseEntity<Map<String, Object>> eliminarDepartamentosInactivos() {
-        try {
-            Map<String, Object> resumen = syncService.eliminarDepartamentosInactivosSoap();
-            return ResponseEntity.ok(resumen);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return ResponseEntity.internalServerError().build();
-        }
+        Map<String, Object> resumen = syncService.eliminarDepartamentosInactivosSoap();
+        return ResponseEntity.ok(resumen);
     }
 
     /**
@@ -91,13 +80,8 @@ public class SincronizacionControllerAlt {
      */
     @PostMapping("/cargos/eliminar-inactivos")
     public ResponseEntity<Map<String, Object>> eliminarCargosInactivos() {
-        try {
-            Map<String, Object> resumen = syncService.eliminarCargosInactivosSoap();
-            return ResponseEntity.ok(resumen);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return ResponseEntity.internalServerError().build();
-        }
+        Map<String, Object> resumen = syncService.eliminarCargosInactivosSoap();
+        return ResponseEntity.ok(resumen);
     }
 
     /**
@@ -105,14 +89,9 @@ public class SincronizacionControllerAlt {
      */
     @PostMapping("/purgar-inactivos-masivo")
     public ResponseEntity<Map<String, Object>> purgarInactivosMasivo() {
-        try {
-            Map<String, Object> resultado = new HashMap<>();
-            resultado.put("departamentos", syncService.eliminarDepartamentosInactivosSoap());
-            resultado.put("cargos", syncService.eliminarCargosInactivosSoap());
-            return ResponseEntity.ok(resultado);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return ResponseEntity.internalServerError().build();
-        }
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("departamentos", syncService.eliminarDepartamentosInactivosSoap());
+        resultado.put("cargos", syncService.eliminarCargosInactivosSoap());
+        return ResponseEntity.ok(resultado);
     }
 }
