@@ -86,6 +86,9 @@ public class SincronizacionServiceAlt {
 	
 	@Autowired
 	private OrpheusSoapClient orpheusSoapClient;
+	
+	@org.springframework.beans.factory.annotation.Value("${sync.automatica.alt.habilitada:true}")
+	private boolean automatizacionHabilitada;
 
 	// =========================================================================
 	// METODOS AUXILIARES DE CONTROL LOCAL
@@ -833,6 +836,11 @@ public class SincronizacionServiceAlt {
 		// Ejecuta cada 5 minutos (300,000 ms).
 		@org.springframework.scheduling.annotation.Scheduled(fixedDelay = 300000)
 		public void orquestadorSincronizacionAutomatica() {
+		    // 🛑 El Kill Switch: Si está apagado, nos salimos inmediatamente
+		    if (!automatizacionHabilitada) {
+		        log.info("⏳ Sincronización automática en pausa por configuración.");
+		        return;
+		    }
 			log.info("--- INICIANDO CICLO DE SINCRONIZACIÓN AUTOMÁTICA ---");
 
 			try {
