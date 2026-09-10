@@ -296,7 +296,33 @@ public class SincronizacionService {
 			return "SKIPPED: Sin cambios";
 		}
 
-		String respuesta = orpheusClient.setEmpleado(payload);
+		String respuesta = null;
+		int maxReintentos = 3;
+		int intento = 0;
+		boolean conexionExitosa = false;
+
+		// BUCLE DE REINTENTO
+		while (intento < maxReintentos && !conexionExitosa) {
+			respuesta = orpheusClient.setEmpleado(payload);
+
+			// Detectamos si es un error de caída de red ("header parser received no bytes" o similares)
+			if (respuesta == null || respuesta.contains("header parser received no bytes") || respuesta.contains("I/O error")) {
+				intento++;
+				log.warn("Fallo de red al sincronizar empleado {} (Intento {} de {}). Reintentando en 3 segundos...", cedula, intento, maxReintentos);
+				
+				if (intento < maxReintentos) {
+					try {
+						Thread.sleep(3000); // Pausa de 3 segundos para dejar que el servidor externo se recupere
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						break; // Salimos del bucle de forma segura si el sistema intenta apagar el proceso
+					}
+				}
+			} else {
+				// Si respondió TRUE o dio un error de validación (ej. Fecha vacía o Puesto Inválido), salimos del bucle
+				conexionExitosa = true;
+			}
+		}
 		
 		if (respuesta != null && respuesta.contains("TRUE")) {
 			log.info("Empleado sincronizado exitosamente: cédula={}, nombre={} {}", 
