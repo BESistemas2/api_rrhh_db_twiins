@@ -184,7 +184,7 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefDepartamentoAlt d : deptos) {
-			Thread.sleep(300);
+			Thread.sleep(600);
 			String res = sincronizarDepartamentoAlt(String.valueOf(d.getCodDepartamento()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -248,7 +248,7 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefCargoAlt c : cargos) {
-			Thread.sleep(300);
+			Thread.sleep(600);
 			String res = sincronizarCargoAlt(String.valueOf(c.getCodCargo()), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
@@ -314,7 +314,7 @@ public class SincronizacionServiceAlt {
 		int errores = 0;
 
 		for (RefUsuario u : activos) {
-			Thread.sleep(300);
+			Thread.sleep(600);
 			String res = sincronizarEmpleado(u.getCedUsuario(), !soloModificados);
 			if (res.startsWith("SKIPPED")) {
 				omitidos++;
