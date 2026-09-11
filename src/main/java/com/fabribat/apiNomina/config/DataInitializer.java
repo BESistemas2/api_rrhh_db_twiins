@@ -8,13 +8,13 @@ import org.springframework.stereotype.Component;
 
 import com.fabribat.apiNomina.entities.security.UsuarioApi;
 import com.fabribat.apiNomina.repositories.security.UsuarioApiRepository;
-import com.fabribat.apiNomina.services.SincronizacionService;
+import com.fabribat.apiNomina.services.SsoSincronizacionService;
 
 @Component
 @Profile("!test")
 public class DataInitializer implements CommandLineRunner {
 	
-	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SincronizacionService.class);
+	private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SsoSincronizacionService.class);
 
     private final UsuarioApiRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;

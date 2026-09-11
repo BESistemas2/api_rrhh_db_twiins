@@ -1,5 +1,6 @@
 package com.fabribat.apiNomina.controllers;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,17 +11,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fabribat.apiNomina.services.SincronizacionService;
+import com.fabribat.apiNomina.services.SsoSincronizacionServiceAlt;
 
 @RestController
-@RequestMapping("/api/v1/sincronizacion")
-public class SincronizacionController {
+@RequestMapping("/api/v1/sso/sincronizacion-alt")
+public class SsoSincronizacionControllerAlt {
 
     @Autowired
-    private SincronizacionService syncService;
+    private SsoSincronizacionServiceAlt syncService;
 
     // =========================================================================
-    // ENDPOINTS INDIVIDUALES (EXISTENTES - SIN CAMBIOS)
+    // ENDPOINTS INDIVIDUALES (EXISTENTES)
     // =========================================================================
 
     @PostMapping("/sucursal-matriz")
@@ -30,12 +31,12 @@ public class SincronizacionController {
 
     @PostMapping("/departamento/{codDepartamento}")
     public ResponseEntity<String> syncDepartamento(@PathVariable String codDepartamento) {
-        return ResponseEntity.ok(syncService.sincronizarDepartamento(codDepartamento));
+        return ResponseEntity.ok(syncService.sincronizarDepartamentoAlt(codDepartamento));
     }
 
     @PostMapping("/cargo/{codCargo}")
     public ResponseEntity<String> syncCargo(@PathVariable String codCargo) {
-        return ResponseEntity.ok(syncService.sincronizarCargo(codCargo));
+        return ResponseEntity.ok(syncService.sincronizarCargoAlt(codCargo));
     }
 
     @PostMapping("/empleado/{cedula}")
@@ -44,15 +45,9 @@ public class SincronizacionController {
     }
 
     // =========================================================================
-    // NUEVOS ENDPOINTS MASIVOS (OPCIONALES)
+    // ENDPOINTS MASIVOS DE SINCRONIZACION (EXISTENTES)
     // =========================================================================
 
-    /**
-     * Sincroniza masivamente toda la empresa (Sucursal, Departamentos, Cargos y Empleados).
-     * @param soloModificados (Opcional, default: true). 
-     *                        Si es true, solo envía registros nuevos o modificados (MD5).
-     *                        Si es false, fuerza el reenvío de todo.
-     */
     @PostMapping("/masiva")
     public ResponseEntity<Map<String, Object>> syncMasivo(
             @RequestParam(defaultValue = "true") boolean soloModificados) {
@@ -65,5 +60,38 @@ public class SincronizacionController {
             @RequestParam(defaultValue = "true") boolean soloModificados) {
         Map<String, Object> resumen = syncService.sincronizarTodosLosEmpleados(soloModificados);
         return ResponseEntity.ok(resumen);
+    }
+
+    // =========================================================================
+    // NUEVOS ENDPOINTS MASIVOS DE ELIMINACION VIA SOAP
+    // =========================================================================
+
+    /**
+     * Elimina en ORPHEUS todos los departamentos con estado 'I' o 'X' en la BD.
+     */
+    @PostMapping("/departamentos/eliminar-inactivos")
+    public ResponseEntity<Map<String, Object>> eliminarDepartamentosInactivos() {
+        Map<String, Object> resumen = syncService.eliminarDepartamentosInactivosSoap();
+        return ResponseEntity.ok(resumen);
+    }
+
+    /**
+     * Elimina en ORPHEUS todos los cargos/puestos con estado 'I' o 'X' en la BD.
+     */
+    @PostMapping("/cargos/eliminar-inactivos")
+    public ResponseEntity<Map<String, Object>> eliminarCargosInactivos() {
+        Map<String, Object> resumen = syncService.eliminarCargosInactivosSoap();
+        return ResponseEntity.ok(resumen);
+    }
+
+    /**
+     * Ejecuta la purga masiva de departamentos y cargos inactivos en un solo proceso.
+     */
+    @PostMapping("/purgar-inactivos-masivo")
+    public ResponseEntity<Map<String, Object>> purgarInactivosMasivo() {
+        Map<String, Object> resultado = new HashMap<>();
+        resultado.put("departamentos", syncService.eliminarDepartamentosInactivosSoap());
+        resultado.put("cargos", syncService.eliminarCargosInactivosSoap());
+        return ResponseEntity.ok(resultado);
     }
 }

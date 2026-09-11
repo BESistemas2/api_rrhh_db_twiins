@@ -41,9 +41,9 @@ import com.fabribat.apiNomina.repositories.security.RefDepartamentoRepositoryAlt
 import com.fabribat.apiNomina.repositories.security.RefProvinciaRepositoryAlt;
 
 @Service
-public class SincronizacionServiceAlt {
+public class SsoSincronizacionServiceAlt {
 	
-	private static final Logger log = LoggerFactory.getLogger(SincronizacionServiceAlt.class);
+	private static final Logger log = LoggerFactory.getLogger(SsoSincronizacionServiceAlt.class);
 
 	@Autowired
 	private OrpheusRestClient orpheusClient;

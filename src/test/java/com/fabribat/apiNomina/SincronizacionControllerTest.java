@@ -1,6 +1,6 @@
 package com.fabribat.apiNomina;
 
-import com.fabribat.apiNomina.services.SincronizacionService;
+import com.fabribat.apiNomina.services.SsoSincronizacionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ class SincronizacionControllerTest {
     private JwtTestUtil jwtTestUtil;
 
     @MockBean
-    private SincronizacionService sincronizacionService;
+    private SsoSincronizacionService sincronizacionService;
 
     private String validToken;
 

@@ -10,24 +10,24 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fabribat.apiNomina.services.SincronizacionService;
+import com.fabribat.apiNomina.services.SsoSincronizacionService;
 
 @RestController
-@RequestMapping("/api/v1")
-public class SsoColaboradorController {
+@RequestMapping("/api/v1/sso")
+public class SsoController {
 
     @Autowired
-    private SincronizacionService syncService;
+    private SsoSincronizacionService syncService;
 
     // Endpoint 1: Obtener la lista completa de empleados formateada para ORPHEUS
-    @GetMapping("/sso-colaboradores")
+    @GetMapping("/colaboradores")
     public ResponseEntity<List<Map<String, Object>>> getTodosLosColaboradores() {
         List<Map<String, Object>> response = syncService.obtenerPayloadTodosLosEmpleados();
         return ResponseEntity.ok(response);
     }
 
     // Endpoint 2: Obtener la información de un solo empleado por su cédula
-    @GetMapping("/sso-colaborador/{cedula}")
+    @GetMapping("/colaborador/{cedula}")
     public ResponseEntity<Map<String, Object>> getColaboradorPorCedula(@PathVariable String cedula) {
         Map<String, Object> response = syncService.obtenerPayloadEmpleado(cedula);
         
@@ -41,13 +41,13 @@ public class SsoColaboradorController {
     // =========================================================================
     // PROVINCIAS
     // =========================================================================
-    @GetMapping("/sso-provincias")
+    @GetMapping("/provincias")
     public ResponseEntity<List<Map<String, Object>>> getTodasLasProvincias() {
         List<Map<String, Object>> response = syncService.obtenerTodasLasProvincias();
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/sso-provincia/{codigo}")
+    @GetMapping("/provincia/{codigo}")
     public ResponseEntity<Map<String, Object>> getProvinciaPorCodigo(@PathVariable Long codigo) {
         Map<String, Object> response = syncService.obtenerProvinciaPorCodigo(codigo);
         
@@ -61,13 +61,13 @@ public class SsoColaboradorController {
     // =========================================================================
     // CIUDADES
     // =========================================================================
-    @GetMapping("/sso-ciudades")
+    @GetMapping("/ciudades")
     public ResponseEntity<List<Map<String, Object>>> getTodasLasCiudades() {
         List<Map<String, Object>> response = syncService.obtenerTodasLasCiudades();
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/sso-ciudad/{codigo}")
+    @GetMapping("/ciudad/{codigo}")
     public ResponseEntity<Map<String, Object>> getCiudadPorCodigo(@PathVariable Long codigo) {
         Map<String, Object> response = syncService.obtenerCiudadPorCodigo(codigo);
         
@@ -81,13 +81,13 @@ public class SsoColaboradorController {
     // =========================================================================
     // CANTONES
     // =========================================================================
-    @GetMapping("/sso-cantones")
+    @GetMapping("/cantones")
     public ResponseEntity<List<Map<String, Object>>> getTodosLosCantones() {
         List<Map<String, Object>> response = syncService.obtenerTodosLosCantones();
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/sso-canton/{codigo}")
+    @GetMapping("/canton/{codigo}")
     public ResponseEntity<Map<String, Object>> getCantonPorCodigo(@PathVariable Short codigo) {
         Map<String, Object> response = syncService.obtenerCantonPorCodigo(codigo);
         
@@ -101,13 +101,13 @@ public class SsoColaboradorController {
     // =========================================================================
     // CARGOS
     // =========================================================================
-    @GetMapping("/sso-cargos")
+    @GetMapping("/cargos")
     public ResponseEntity<List<Map<String, Object>>> getTodosLosCargos() {
         List<Map<String, Object>> response = syncService.obtenerTodosLosCargos();
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/sso-cargo/{codigo}")
+    @GetMapping("/cargo/{codigo}")
     public ResponseEntity<Map<String, Object>> getCargoPorCodigo(@PathVariable Long codigo) {
         Map<String, Object> response = syncService.obtenerCargoPorCodigo(codigo);
         
@@ -121,13 +121,13 @@ public class SsoColaboradorController {
     // =========================================================================
     // DEPARTAMENTOS
     // =========================================================================
-    @GetMapping("/sso-departamentos")
+    @GetMapping("/departamentos")
     public ResponseEntity<List<Map<String, Object>>> getTodosLosDepartamentos() {
         List<Map<String, Object>> response = syncService.obtenerTodosLosDepartamentos();
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/sso-departamento/{codigo}")
+    @GetMapping("/departamento/{codigo}")
     public ResponseEntity<Map<String, Object>> getDepartamentoPorCodigo(@PathVariable String codigo) {
         Map<String, Object> response = syncService.obtenerDepartamentoPorCodigo(codigo);
         
