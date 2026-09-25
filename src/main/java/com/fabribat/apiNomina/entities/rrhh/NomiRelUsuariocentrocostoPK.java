@@ -3,15 +3,11 @@ package com.fabribat.apiNomina.entities.rrhh;
 import java.io.Serializable;
 import java.util.Objects;
 
-/**
- * Composite Primary Key class for nomi_rel_usuariocentrocosto.
- * Required by JPA when a table has a composite primary key.
- */
 public class NomiRelUsuariocentrocostoPK implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private String usrUsuario;
-	private int codCentrocosto;
+	private Integer codCentrocosto; // Cambiado de int a Integer
 
 	public NomiRelUsuariocentrocostoPK() {
 	}
@@ -24,11 +20,11 @@ public class NomiRelUsuariocentrocostoPK implements Serializable {
 		this.usrUsuario = usrUsuario;
 	}
 
-	public int getCodCentrocosto() {
+	public Integer getCodCentrocosto() {
 		return this.codCentrocosto;
 	}
 
-	public void setCodCentrocosto(int codCentrocosto) {
+	public void setCodCentrocosto(Integer codCentrocosto) {
 		this.codCentrocosto = codCentrocosto;
 	}
 
@@ -37,7 +33,7 @@ public class NomiRelUsuariocentrocostoPK implements Serializable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		NomiRelUsuariocentrocostoPK that = (NomiRelUsuariocentrocostoPK) o;
-		return codCentrocosto == that.codCentrocosto &&
+		return Objects.equals(codCentrocosto, that.codCentrocosto) &&
 				Objects.equals(usrUsuario, that.usrUsuario);
 	}
 

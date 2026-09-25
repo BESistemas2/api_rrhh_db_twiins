@@ -4,89 +4,89 @@ import java.io.Serializable;
 import jakarta.persistence.*;
 
 /**
- * The persistent class for the nomi_ref_centrodecosto database table.[cite: 1]
+ * The persistent class for the nomi_ref_centrodecosto database table.
  * 
  */
 @Entity
-@Table(name = "nomi_ref_centrodecosto")
-@NamedQuery(name = "NomiRefCentrodecosto.findAll", query = "SELECT n FROM NomiRefCentrodecosto n")
+@Table(name="nomi_ref_centrodecosto")
+@NamedQuery(name="NomiRefCentrodecosto.findAll", query="SELECT n FROM NomiRefCentrodecosto n")
 public class NomiRefCentrodecosto implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@Column(name = "cod_centrodecosto")
-	private short codCentrodecosto;
+	@Column(name="cod_centrodecosto")
+	private Short codCentrodecosto; // Cambiado de short a Short
 
-	@Column(name = "cod_ciudad")
-	private short codCiudad;
+	@Column(name="cod_ciudad")
+	private Short codCiudad; // Cambiado de short a Short
 
-	@Column(name = "cod_distribucion")
-	private short codDistribucion;
+	@Column(name="cod_distribucion")
+	private Short codDistribucion; // Cambiado de short a Short
 
-	@Column(name = "cod_empresa")
-	private short codEmpresa;
+	@Column(name="cod_empresa")
+	private Short codEmpresa; // Cambiado de short a Short
 
-	@Column(name = "cod_region")
-	private short codRegion;
+	@Column(name="cod_region")
+	private Short codRegion; // Cambiado de short a Short
 
-	@Column(name = "des_centrodecosto")
+	@Column(name="des_centrodecosto")
 	private String desCentrodecosto;
 
-	@Column(name = "est_centrodecosto")
+	@Column(name="est_centrodecosto")
 	private String estCentrodecosto;
 
-	@Column(name = "ide_centrodecosto")
+	@Column(name="ide_centrodecosto")
 	private String ideCentrodecosto;
 
-	@Column(name = "nom_centrodecosto")
+	@Column(name="nom_centrodecosto")
 	private String nomCentrodecosto;
 
-	@Column(name = "por_centrodecosto")
-	private double porCentrodecosto;
+	@Column(name="por_centrodecosto")
+	private Double porCentrodecosto; // Cambiado de double a Double
 
-	@Column(name = "tip_centrodecosto")
+	@Column(name="tip_centrodecosto")
 	private String tipCentrodecosto;
 
 	public NomiRefCentrodecosto() {
 	}
 
-	public short getCodCentrodecosto() {
+	public Short getCodCentrodecosto() {
 		return this.codCentrodecosto;
 	}
 
-	public void setCodCentrodecosto(short codCentrodecosto) {
+	public void setCodCentrodecosto(Short codCentrodecosto) {
 		this.codCentrodecosto = codCentrodecosto;
 	}
 
-	public short getCodCiudad() {
+	public Short getCodCiudad() {
 		return this.codCiudad;
 	}
 
-	public void setCodCiudad(short codCiudad) {
+	public void setCodCiudad(Short codCiudad) {
 		this.codCiudad = codCiudad;
 	}
 
-	public short getCodDistribucion() {
+	public Short getCodDistribucion() {
 		return this.codDistribucion;
 	}
 
-	public void setCodDistribucion(short codDistribucion) {
+	public void setCodDistribucion(Short codDistribucion) {
 		this.codDistribucion = codDistribucion;
 	}
 
-	public short getCodEmpresa() {
+	public Short getCodEmpresa() {
 		return this.codEmpresa;
 	}
 
-	public void setCodEmpresa(short codEmpresa) {
+	public void setCodEmpresa(Short codEmpresa) {
 		this.codEmpresa = codEmpresa;
 	}
 
-	public short getCodRegion() {
+	public Short getCodRegion() {
 		return this.codRegion;
 	}
 
-	public void setCodRegion(short codRegion) {
+	public void setCodRegion(Short codRegion) {
 		this.codRegion = codRegion;
 	}
 
@@ -122,11 +122,11 @@ public class NomiRefCentrodecosto implements Serializable {
 		this.nomCentrodecosto = nomCentrodecosto;
 	}
 
-	public double getPorCentrodecosto() {
+	public Double getPorCentrodecosto() {
 		return this.porCentrodecosto;
 	}
 
-	public void setPorCentrodecosto(double porCentrodecosto) {
+	public void setPorCentrodecosto(Double porCentrodecosto) {
 		this.porCentrodecosto = porCentrodecosto;
 	}
 
@@ -137,5 +137,4 @@ public class NomiRefCentrodecosto implements Serializable {
 	public void setTipCentrodecosto(String tipCentrodecosto) {
 		this.tipCentrodecosto = tipCentrodecosto;
 	}
-
 }

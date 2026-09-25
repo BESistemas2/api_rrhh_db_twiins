@@ -526,15 +526,13 @@ public class SsoSincronizacionServiceAlt {
 		// Obtener relaciones del usuario con centro de costo
 		List<NomiRelUsuariocentrocosto> centrosRel = nomiRelUsuariocentrocostoRepo.findByUsrUsuario(usuario.getUsrUsuario());
 
-		String codDepartamentoVal = "45"; // Valor por defecto si no existe asignación
+		String codDepartamentoVal = "45"; // Valor por defecto por si no existe centro de costo asignado
 
 		if (centrosRel != null && !centrosRel.isEmpty()) {
 		    NomiRelUsuariocentrocosto rel = centrosRel.get(0);
-		    if (rel != null && rel.getCodCentrocosto() != 0) {
+		    if (rel != null && rel.getCodCentrocosto() != null && rel.getCodCentrocosto() != 0) {
 		        codDepartamentoVal = String.valueOf(rel.getCodCentrocosto());
 		    }
-		} else if (usuario.getCodDepartamento() != null && !"-1".equals(usuario.getCodDepartamento().toString())) {
-		    codDepartamentoVal = usuario.getCodDepartamento().toString();
 		}
 
 		payload.put("departamento", codDepartamentoVal);
@@ -850,6 +848,7 @@ public class SsoSincronizacionServiceAlt {
 		item.put("tipCentrodecosto", c.getTipCentrodecosto());
 		return item;
 	}
+	
 	
 	// =========================================================================
 	// ELIMINACIÓN MASIVA VÍA SOAP

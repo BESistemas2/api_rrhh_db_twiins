@@ -3,10 +3,6 @@ package com.fabribat.apiNomina.entities.rrhh;
 import java.io.Serializable;
 import jakarta.persistence.*;
 
-/**
- * The persistent class for the nomi_rel_usuariocentrocosto database table.
- * 
- */
 @Entity
 @Table(name="nomi_rel_usuariocentrocosto")
 @IdClass(NomiRelUsuariocentrocostoPK.class)
@@ -20,10 +16,10 @@ public class NomiRelUsuariocentrocosto implements Serializable {
 
 	@Id
 	@Column(name="cod_centrocosto")
-	private Integer codCentrocosto;
+	private Integer codCentrocosto; // Cambiado de int a Integer
 
 	@Column(name="por_centrocosto")
-	private float porCentrocosto;
+	private Float porCentrocosto; // Cambiado de float a Float
 
 	public NomiRelUsuariocentrocosto() {
 	}
@@ -44,11 +40,11 @@ public class NomiRelUsuariocentrocosto implements Serializable {
 		this.codCentrocosto = codCentrocosto;
 	}
 
-	public float getPorCentrocosto() {
+	public Float getPorCentrocosto() {
 		return this.porCentrocosto;
 	}
 
-	public void setPorCentrocosto(float porCentrocosto) {
+	public void setPorCentrocosto(Float porCentrocosto) {
 		this.porCentrocosto = porCentrocosto;
 	}
 }
