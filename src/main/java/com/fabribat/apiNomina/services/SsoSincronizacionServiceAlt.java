@@ -523,10 +523,16 @@ public class SsoSincronizacionServiceAlt {
 		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
 		payload.put("local", "001");
 		
-		if(nomiRelUsrCentroCosto.getCodCentrocosto()==null || "-1".equals(usuario.getCodDepartamento().toString())){
-			payload.put("departamento", "45");
-		}else {
-			payload.put("departamento", nomiRelUsrCentroCosto.getCodCentrocosto().toString());
+		// Validamos si la relación o el centro de costo son nulos
+		boolean esCentroCostoNulo = (nomiRelUsrCentroCosto == null || nomiRelUsrCentroCosto.getCodCentrocosto() == 0);
+
+		// Validamos si el departamento del usuario es nulo o tiene el valor por defecto "-1"
+		boolean esDeptoInvalido = (usuario == null || usuario.getCodDepartamento() == null || "-1".equals(usuario.getCodDepartamento().toString()));
+
+		if (esCentroCostoNulo || esDeptoInvalido) {
+		    payload.put("departamento", "45");
+		} else {
+		    payload.put("departamento", String.valueOf(nomiRelUsrCentroCosto.getCodCentrocosto()));
 		}
 		//if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
 		//	payload.put("departamento", "1000");
