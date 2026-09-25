@@ -234,10 +234,21 @@ public class SsoSincronizacionServiceAlt {
 		RefCargoAlt cargo = cargoOpt.get();
 		String codigoStr = String.valueOf(cargo.getCodCargo());
 
+		// Buscar el Centro de Costo asociado al cargo (o "45" por defecto si es nulo)
+		String codCentroCostoVal = "45";
+		if (cargo.getCodDepartamento() != null && cargo.getCodDepartamento() != 0) {
+			Optional<NomiRefCentrodecosto> centroOpt = centrodecostoRepo.findById(cargo.getCodDepartamento());
+			if (centroOpt.isPresent() && centroOpt.get().getCodCentrodecosto() != null) {
+				codCentroCostoVal = String.valueOf(centroOpt.get().getCodCentrodecosto());
+			} else {
+				codCentroCostoVal = String.valueOf(cargo.getCodDepartamento());
+			}
+		}
+
 		Map<String, Object> payload = new HashMap<>();
 		payload.put("codigo", codigoStr);
 		payload.put("nombre", cargo.getNomCargo());
-		payload.put("departamento", cargo.getCodDepartamento() != null ? String.valueOf(cargo.getCodDepartamento()) : "");
+		payload.put("departamento", codCentroCostoVal); // Envía el código de Centro de Costo
 
 		String estado = (cargo.getEstCargo() != null && cargo.getEstCargo().equals("A")) ? "A" : "I";
 		payload.put("status", estado);
