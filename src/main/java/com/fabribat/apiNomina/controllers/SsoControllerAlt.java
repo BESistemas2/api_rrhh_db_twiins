@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fabribat.apiNomina.services.SsoSincronizacionServiceAlt;
 
 @RestController
-@RequestMapping("/api/v1/sso-alt")
+@RequestMapping("/api/v1/sso/alt")
 public class SsoControllerAlt {
 
     @Autowired
@@ -130,6 +130,26 @@ public class SsoControllerAlt {
     @GetMapping("/departamento/{codigo}")
     public ResponseEntity<Map<String, Object>> getDepartamentoPorCodigo(@PathVariable String codigo) {
         Map<String, Object> response = syncService.obtenerDepartamentoPorCodigo(codigo);
+        
+        if (response.containsKey("error")) {
+            return ResponseEntity.status(404).body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    
+ // =========================================================================
+    // CENTROS DE COSTO
+    // =========================================================================
+    @GetMapping("/centrosdecosto")
+    public ResponseEntity<List<Map<String, Object>>> getTodosLosCentrosdecosto() {
+        List<Map<String, Object>> response = syncService.obtenerTodosLosCentrosdecosto();
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/centrodecosto/{codigo}")
+    public ResponseEntity<Map<String, Object>> getCentrodecostoPorCodigo(@PathVariable String codigo) {
+        Map<String, Object> response = syncService.obtenerCentrodecostoPorCodigo(codigo);
         
         if (response.containsKey("error")) {
             return ResponseEntity.status(404).body(response);
