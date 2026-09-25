@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import com.fabribat.apiNomina.entities.rrhh.BkpUsuario;
+import com.fabribat.apiNomina.entities.rrhh.NomiRefCentrodecosto;
+import com.fabribat.apiNomina.entities.rrhh.NomiRelUsuariocentrocosto;
 import com.fabribat.apiNomina.entities.rrhh.RefCargo;
 import com.fabribat.apiNomina.entities.rrhh.RefCiudad;
 import com.fabribat.apiNomina.entities.rrhh.RefCanton;
@@ -28,6 +30,8 @@ import com.fabribat.apiNomina.entities.security.RefCantonAlt;
 import com.fabribat.apiNomina.entities.security.RefDepartamentoAlt;
 import com.fabribat.apiNomina.entities.security.RefProvinciaAlt;
 import com.fabribat.apiNomina.repositories.rrhh.BkpUsuarioRepository;
+import com.fabribat.apiNomina.repositories.rrhh.NomiRefCentrodecostoRepository;
+import com.fabribat.apiNomina.repositories.rrhh.NomiRelUsuariocentrocostoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCargoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCiudadRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCantonRepository;
@@ -83,6 +87,12 @@ public class SsoSincronizacionServiceAlt {
 
 	@Autowired
 	private SincronizacionLogRepository syncLogRepo;
+	
+	@Autowired
+	private NomiRefCentrodecostoRepository centrodecostoRepo;
+
+	@Autowired
+	private NomiRelUsuariocentrocostoRepository nomiRelUsuariocentrocostoRepo;
 	
 	@Autowired
 	private OrpheusSoapClient orpheusSoapClient;
@@ -291,8 +301,12 @@ public class SsoSincronizacionServiceAlt {
 
 		Optional<BkpUsuario> bkpOpt = bkpRepo.findFirstByCedUsuarioOrderByCambFechaDesc(cedula);
 		BkpUsuario bkp = bkpOpt.orElse(new BkpUsuario());
+		
+		Optional<NomiRelUsuariocentrocosto> nomiRelUsrCentroCostoOptional = nomiRelUsuariocentrocostoRepo.findFirstByUsrUsuario(usuario.getUsrUsuario());
+		NomiRelUsuariocentrocosto nomiRelUsrCentroCosto = nomiRelUsrCentroCostoOptional.orElse(new NomiRelUsuariocentrocosto());
 
-		Map<String, Object> payload = buildEmpleadoPayload(usuario, bkp, false);
+
+		Map<String, Object> payload = buildEmpleadoPayload(usuario, bkp, nomiRelUsrCentroCosto,  false);
 		String hash = generarHash(payload);
 
 		if (!forzar && !esRegistroModificado("EMPLEADO", cedula, hash)) {
@@ -370,12 +384,87 @@ public class SsoSincronizacionServiceAlt {
 		resumen.put("errores", errores);
 		return resumen;
 	}
+	
+	// =========================================================================
+	// SINCRONIZAR CENTRO DE COSTO
+	// =========================================================================
+	public String sincronizarCentrodecosto(String codCentrodecosto) {
+		return sincronizarCentrodecosto(codCentrodecosto, true);
+	}
+
+	public String sincronizarCentrodecosto(String codCentrodecosto, boolean forzar) {
+		Optional<NomiRefCentrodecosto> centroOpt = centrodecostoRepo.findById(Short.parseShort(codCentrodecosto));
+
+		if (centroOpt.isEmpty()) {
+			return "ERROR: Centro de Costo no encontrado en BD con código " + codCentrodecosto;
+		}
+
+		NomiRefCentrodecosto centro = centroOpt.get();
+		String codigoStr = String.valueOf(centro.getCodCentrodecosto());
+
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("codigo", codigoStr);
+		payload.put("nombre", centro.getNomCentrodecosto());
+
+		String hash = generarHash(payload);
+
+		if (!forzar && !esRegistroModificado("CENTRODECOSTO", codigoStr, hash)) {
+			return "SKIPPED: Sin cambios";
+		}
+
+		String respuesta = orpheusClient.setDepartamento(payload);
+		registrarSincronizacion("CENTRODECOSTO", codigoStr, hash, respuesta);
+		return respuesta;
+	}
+
+	public Map<String, Object> sincronizarTodosLosCentrosdecosto(boolean soloModificados) {
+		List<NomiRefCentrodecosto> centros = centrodecostoRepo.findByEstCentrodecosto("A");
+		int total = centros.size();
+		int procesados = 0;
+		int omitidos = 0;
+		int errores = 0;
+
+		for (NomiRefCentrodecosto c : centros) {
+			try {
+				Thread.sleep(600);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			String res = sincronizarCentrodecosto(String.valueOf(c.getCodCentrodecosto()), !soloModificados);
+			if (res.startsWith("SKIPPED")) {
+				omitidos++;
+			} else if ("TRUE".equalsIgnoreCase(res != null ? res.trim() : "")) {
+				procesados++;
+			} else {
+				errores++;
+			}
+		}
+
+		Map<String, Object> resumen = new HashMap<>();
+		resumen.put("total", total);
+		resumen.put("procesados", procesados);
+		resumen.put("omitidos", omitidos);
+		resumen.put("errores", errores);
+		return resumen;
+	}
+
+	// =========================================================================
+	// BUSCAR CENTROS DE COSTO POR USUARIO (NomiRelUsuariocentrocosto)
+	// =========================================================================
+	public List<NomiRelUsuariocentrocosto> obtenerCentrosCostoPorUsuario(String usrUsuario) {
+		return nomiRelUsuariocentrocostoRepo.findByUsrUsuario(usrUsuario);
+	}
+
+	// =========================================================================
+	// SINCRONIZAR TODO MASIVO
+	// =========================================================================
 
 	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados){
 		Map<String, Object> resumenGeneral = new HashMap<>();
 		
 		String matriz = sincronizarSucursalPorDefecto();
-		Map<String, Object> deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
+		//Map<String, Object> deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
+		Map<String, Object> deptos = sincronizarTodosLosCentrosdecosto(soloModificados);
 		Map<String, Object> cargos = sincronizarTodosLosCargosAlt(soloModificados);
 		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
 		
@@ -386,6 +475,7 @@ public class SsoSincronizacionServiceAlt {
 			
 		return resumenGeneral;
 	}
+	
 
 	// =========================================================================
 	// UTILERIAS & PAYLOAD HELPERS
@@ -404,7 +494,7 @@ public class SsoSincronizacionServiceAlt {
 		};
 	}
 
-	private Map<String, Object> buildEmpleadoPayload(RefUsuario usuario, BkpUsuario bkp, boolean includeEntidad) {
+	private Map<String, Object> buildEmpleadoPayload(RefUsuario usuario, BkpUsuario bkp, NomiRelUsuariocentrocosto nomiRelUsrCentroCosto , boolean includeEntidad) {
 		Map<String, Object> payload = new HashMap<>();
 		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
@@ -433,11 +523,16 @@ public class SsoSincronizacionServiceAlt {
 		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
 		payload.put("local", "001");
 		
-		if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
-			payload.put("departamento", "1000");
+		if(nomiRelUsrCentroCosto.getCodCentrocosto()==0 || "-1".equals(usuario.getCodDepartamento().toString())){
+			payload.put("departamento", "45");
 		}else {
-			payload.put("departamento", usuario.getCodDepartamento().toString());
+			payload.put("departamento", nomiRelUsrCentroCosto.getCodCentrocosto().toString());
 		}
+		//if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
+		//	payload.put("departamento", "1000");
+		//}else {
+		//	payload.put("departamento", usuario.getCodDepartamento().toString());
+		//}
 		if(usuario.getCodCargentiexte()== null || "-1".equals(usuario.getCodCargentiexte().toString())){
 			payload.put("puesto", "1000");
 		}else {
@@ -482,8 +577,11 @@ public class SsoSincronizacionServiceAlt {
 		RefUsuario usuario = usuarioOpt.get();
 		Optional<BkpUsuario> bkpOpt = bkpRepo.findFirstByCedUsuarioOrderByCambFechaDesc(cedula);
 		BkpUsuario bkp = bkpOpt.orElse(new BkpUsuario());
+		
+		Optional<NomiRelUsuariocentrocosto> nomiRelUsrCentroCostoOptional = nomiRelUsuariocentrocostoRepo.findFirstByUsrUsuario(usuario.getUsrUsuario());
+		NomiRelUsuariocentrocosto nomiRelUsrCentroCosto = nomiRelUsrCentroCostoOptional.orElse(new NomiRelUsuariocentrocosto());
 
-		return buildEmpleadoPayload(usuario, bkp, true);
+		return buildEmpleadoPayload(usuario, bkp, nomiRelUsrCentroCosto, true);
 	}
 
 	public List<Map<String, Object>> obtenerPayloadTodosLosEmpleados() {
@@ -691,6 +789,51 @@ public class SsoSincronizacionServiceAlt {
 		item.put("tipDepartamento", d.getTipDepartamento());
 		item.put("usrGerentecost", d.getUsrGerentecost());
 		item.put("usrGerentesier", d.getUsrGerentesier());
+		return item;
+	}
+	
+	// =========================================================================
+	// CONSULTA DE CATÁLOGOS - CENTRO DE COSTO
+	// =========================================================================
+
+	public List<Map<String, Object>> obtenerTodosLosCentrosdecosto() {
+		List<NomiRefCentrodecosto> centros = centrodecostoRepo.findAll();
+		List<Map<String, Object>> lista = new ArrayList<>();
+		
+		for (NomiRefCentrodecosto c : centros) {
+			Map<String, Object> item = new HashMap<>();
+			item.put("codigo", c.getCodCentrodecosto());
+			item.put("nombre", c.getNomCentrodecosto());
+			item.put("estado", c.getEstCentrodecosto());
+			item.put("descripcion", c.getDesCentrodecosto());
+			item.put("codigoEmpresa", c.getCodEmpresa());
+			item.put("codigoRegion", c.getCodRegion());
+			lista.add(item);
+		}
+		return lista;
+	}
+
+	public Map<String, Object> obtenerCentrodecostoPorCodigo(String codigo) {
+		Map<String, Object> item = new HashMap<>();
+		Optional<NomiRefCentrodecosto> opt = centrodecostoRepo.findById(Short.parseShort(codigo));
+		
+		if (opt.isEmpty()) {
+			item.put("error", "Centro de costo no encontrado con código " + codigo);
+			return item;
+		}
+		
+		NomiRefCentrodecosto c = opt.get();
+		item.put("codigo", c.getCodCentrodecosto());
+		item.put("nombre", c.getNomCentrodecosto());
+		item.put("estado", c.getEstCentrodecosto());
+		item.put("descripcion", c.getDesCentrodecosto());
+		item.put("codigoEmpresa", c.getCodEmpresa());
+		item.put("codigoRegion", c.getCodRegion());
+		item.put("codigoCiudad", c.getCodCiudad());
+		item.put("codigoDistribucion", c.getCodDistribucion());
+		item.put("ideCentrodecosto", c.getIdeCentrodecosto());
+		item.put("porCentrodecosto", c.getPorCentrodecosto());
+		item.put("tipCentrodecosto", c.getTipCentrodecosto());
 		return item;
 	}
 	
