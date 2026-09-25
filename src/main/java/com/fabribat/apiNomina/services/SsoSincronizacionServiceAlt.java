@@ -523,7 +523,7 @@ public class SsoSincronizacionServiceAlt {
 		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
 		payload.put("local", "001");
 		
-		if(nomiRelUsrCentroCosto.getCodCentrocosto()==0 || "-1".equals(usuario.getCodDepartamento().toString())){
+		if(nomiRelUsrCentroCosto.getCodCentrocosto()==null || "-1".equals(usuario.getCodDepartamento().toString())){
 			payload.put("departamento", "45");
 		}else {
 			payload.put("departamento", nomiRelUsrCentroCosto.getCodCentrocosto().toString());
