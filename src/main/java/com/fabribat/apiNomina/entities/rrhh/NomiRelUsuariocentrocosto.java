@@ -1,0 +1,54 @@
+package com.fabribat.apiNomina.entities.rrhh;
+
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+/**
+ * The persistent class for the nomi_rel_usuariocentrocosto database table.
+ * 
+ */
+@Entity
+@Table(name="nomi_rel_usuariocentrocosto")
+@IdClass(NomiRelUsuariocentrocostoPK.class)
+@NamedQuery(name="NomiRelUsuariocentrocosto.findAll", query="SELECT n FROM NomiRelUsuariocentrocosto n")
+public class NomiRelUsuariocentrocosto implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="usr_usuario")
+	private String usrUsuario;
+
+	@Id
+	@Column(name="cod_centrocosto")
+	private Integer codCentrocosto;
+
+	@Column(name="por_centrocosto")
+	private float porCentrocosto;
+
+	public NomiRelUsuariocentrocosto() {
+	}
+
+	public String getUsrUsuario() {
+		return this.usrUsuario;
+	}
+
+	public void setUsrUsuario(String usrUsuario) {
+		this.usrUsuario = usrUsuario;
+	}
+
+	public Integer getCodCentrocosto() {
+		return this.codCentrocosto;
+	}
+
+	public void setCodCentrocosto(Integer codCentrocosto) {
+		this.codCentrocosto = codCentrocosto;
+	}
+
+	public float getPorCentrocosto() {
+		return this.porCentrocosto;
+	}
+
+	public void setPorCentrocosto(float porCentrocosto) {
+		this.porCentrocosto = porCentrocosto;
+	}
+}
