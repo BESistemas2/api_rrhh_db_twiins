@@ -523,17 +523,21 @@ public class SsoSincronizacionServiceAlt {
 		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
 		payload.put("local", "001");
 		
-		// Validamos si la relación o el centro de costo son nulos
-		boolean esCentroCostoNulo = (nomiRelUsrCentroCosto == null || nomiRelUsrCentroCosto.getCodCentrocosto() == 0);
+		// Obtener relaciones del usuario con centro de costo
+		List<NomiRelUsuariocentrocosto> centrosRel = nomiRelUsuariocentrocostoRepo.findByUsrUsuario(usuario.getUsrUsuario());
 
-		// Validamos si el departamento del usuario es nulo o tiene el valor por defecto "-1"
-		boolean esDeptoInvalido = (usuario == null || usuario.getCodDepartamento() == null || "-1".equals(usuario.getCodDepartamento().toString()));
+		String codDepartamentoVal = "45"; // Valor por defecto si no existe asignación
 
-		if (esCentroCostoNulo || esDeptoInvalido) {
-		    payload.put("departamento", "45");
-		} else {
-		    payload.put("departamento", String.valueOf(nomiRelUsrCentroCosto.getCodCentrocosto()));
+		if (centrosRel != null && !centrosRel.isEmpty()) {
+		    NomiRelUsuariocentrocosto rel = centrosRel.get(0);
+		    if (rel != null && rel.getCodCentrocosto() != 0) {
+		        codDepartamentoVal = String.valueOf(rel.getCodCentrocosto());
+		    }
+		} else if (usuario.getCodDepartamento() != null && !"-1".equals(usuario.getCodDepartamento().toString())) {
+		    codDepartamentoVal = usuario.getCodDepartamento().toString();
 		}
+
+		payload.put("departamento", codDepartamentoVal);
 		//if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
 		//	payload.put("departamento", "1000");
 		//}else {
@@ -595,7 +599,11 @@ public class SsoSincronizacionServiceAlt {
 		List<Map<String, Object>> listaPayloads = new ArrayList<>();
 
 		for (RefUsuario u : activos) {
-			listaPayloads.add(obtenerPayloadEmpleado(u.getCedUsuario()));
+			try {
+	            listaPayloads.add(obtenerPayloadEmpleado(u.getCedUsuario()));
+	        } catch (Exception e) {
+	            log.error("❌ Error procesando empleado con Cédula {}: {}", u.getCedUsuario(), e.getMessage(), e);
+	        }
 		}
 		return listaPayloads;
 	}
