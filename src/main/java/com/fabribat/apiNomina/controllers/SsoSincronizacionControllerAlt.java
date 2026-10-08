@@ -29,9 +29,17 @@ public class SsoSincronizacionControllerAlt {
         return ResponseEntity.ok(syncService.sincronizarSucursalPorDefecto());
     }
 
-    @PostMapping("/departamento/{codDepartamento}")
-    public ResponseEntity<String> syncDepartamento(@PathVariable String codDepartamento) {
-        return ResponseEntity.ok(syncService.sincronizarDepartamentoAlt(codDepartamento));
+    //@PostMapping("/departamento/{codDepartamento}")
+    //public ResponseEntity<String> syncDepartamento(@PathVariable String codDepartamento) {
+    //    return ResponseEntity.ok(syncService.sincronizarDepartamentoAlt(codDepartamento));
+    //}
+    
+    /**
+     * Sincroniza un Área individual (enviada como 'Departamento' a Orpheus).
+     */
+    @PostMapping("/area/{codArea}")
+    public ResponseEntity<String> syncArea(@PathVariable Short codArea) {
+        return ResponseEntity.ok(syncService.sincronizarAreaAlt(codArea, true));
     }
 
     @PostMapping("/cargo/{codCargo}")
@@ -52,6 +60,16 @@ public class SsoSincronizacionControllerAlt {
     public ResponseEntity<Map<String, Object>> syncMasivo(
             @RequestParam(defaultValue = "true") boolean soloModificados) {
         Map<String, Object> resumen = syncService.sincronizarTodoMasivo(soloModificados);
+        return ResponseEntity.ok(resumen);
+    }
+    
+    /**
+     * Sincroniza masivamente todas las Áreas hacia Orpheus.
+     */
+    @PostMapping("/areas/masivo")
+    public ResponseEntity<Map<String, Object>> syncAreasMasivo(
+            @RequestParam(defaultValue = "true") boolean soloModificados) {
+        Map<String, Object> resumen = syncService.sincronizarTodasLasAreasAlt(soloModificados);
         return ResponseEntity.ok(resumen);
     }
 

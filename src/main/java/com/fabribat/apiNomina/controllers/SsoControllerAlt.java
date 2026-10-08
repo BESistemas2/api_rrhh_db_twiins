@@ -138,7 +138,7 @@ public class SsoControllerAlt {
         return ResponseEntity.ok(response);
     }
     
- // =========================================================================
+    // =========================================================================
     // CENTROS DE COSTO
     // =========================================================================
     @GetMapping("/centrosdecosto")
@@ -150,6 +150,25 @@ public class SsoControllerAlt {
     @GetMapping("/centrodecosto/{codigo}")
     public ResponseEntity<Map<String, Object>> getCentrodecostoPorCodigo(@PathVariable String codigo) {
         Map<String, Object> response = syncService.obtenerCentrodecostoPorCodigo(codigo);
+        
+        if (response.containsKey("error")) {
+            return ResponseEntity.status(404).body(response);
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+    // =========================================================================
+    // ÁREAS
+    // =========================================================================
+    @GetMapping("/areas")
+    public ResponseEntity<List<Map<String, Object>>> getTodasLasAreas() {
+        List<Map<String, Object>> response = syncService.obtenerTodasLasAreas();
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/area/{codigo}")
+    public ResponseEntity<Map<String, Object>> getAreaPorCodigo(@PathVariable Short codigo) {
+        Map<String, Object> response = syncService.obtenerAreaPorCodigo(codigo);
         
         if (response.containsKey("error")) {
             return ResponseEntity.status(404).body(response);

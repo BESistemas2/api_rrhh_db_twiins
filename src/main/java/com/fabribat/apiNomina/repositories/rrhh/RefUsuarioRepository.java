@@ -12,4 +12,7 @@ public interface RefUsuarioRepository extends Repository<RefUsuario, String> {
 
     // Busca a un empleado específico por cédula pero asegurando que esté Activo ('A')
     Optional<RefUsuario> findFirstByCedUsuarioAndEstUsuario(String cedUsuario, String estUsuario);
+    
+   // En RefUsuarioRepository.java
+    List<RefUsuario> findByCodCargentiexteAndEstUsuario(Short codCargentiexte, String estUsuario);
 }

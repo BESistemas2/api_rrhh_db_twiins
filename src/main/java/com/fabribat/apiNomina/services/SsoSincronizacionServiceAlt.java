@@ -18,6 +18,7 @@ import org.springframework.util.DigestUtils;
 import com.fabribat.apiNomina.entities.rrhh.BkpUsuario;
 import com.fabribat.apiNomina.entities.rrhh.NomiRefCentrodecosto;
 import com.fabribat.apiNomina.entities.rrhh.NomiRelUsuariocentrocosto;
+import com.fabribat.apiNomina.entities.rrhh.RefArea;
 import com.fabribat.apiNomina.entities.rrhh.RefCargo;
 import com.fabribat.apiNomina.entities.rrhh.RefCiudad;
 import com.fabribat.apiNomina.entities.rrhh.RefCanton;
@@ -32,6 +33,7 @@ import com.fabribat.apiNomina.entities.security.RefProvinciaAlt;
 import com.fabribat.apiNomina.repositories.rrhh.BkpUsuarioRepository;
 import com.fabribat.apiNomina.repositories.rrhh.NomiRefCentrodecostoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.NomiRelUsuariocentrocostoRepository;
+import com.fabribat.apiNomina.repositories.rrhh.RefAreaRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCargoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCiudadRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCantonRepository;
@@ -84,6 +86,9 @@ public class SsoSincronizacionServiceAlt {
 
 	@Autowired
 	private RefCantonRepositoryAlt cantonRepoAlt;
+	
+	@Autowired
+	private RefAreaRepository areaRepo;
 
 	@Autowired
 	private SincronizacionLogRepository syncLogRepo;
@@ -135,6 +140,24 @@ public class SsoSincronizacionServiceAlt {
 
 	    logEntity.setResultado(resultado);
 	    syncLogRepo.save(logEntity);
+	}
+	
+	// =========================================================================
+	// HELPER: OBTENER CÓDIGO DE ÁREA DESDE UN DEPARTAMENTO
+	// =========================================================================
+	private String obtenerCodAreaDesdeDepartamento(Short codDepartamento) {
+		if (codDepartamento == null || codDepartamento == 0 || codDepartamento == -1) {
+			return "1"; // Valor por defecto si no tiene departamento asignado
+		}
+		
+		Optional<RefDepartamento> deptoOpt = departamentoRepo.findById(codDepartamento);
+		if (deptoOpt.isPresent()) {
+			RefDepartamento depto = deptoOpt.get();
+			if (depto.getCodArea() != 0) {
+				return String.valueOf(depto.getCodArea());
+			}
+		}
+		return "24"; 
 	}
 
 	// =========================================================================
@@ -218,7 +241,7 @@ public class SsoSincronizacionServiceAlt {
 	}
 
 	// =========================================================================
-	// 3. SINCRONIZAR CARGO
+	// 3. SINCRONIZAR CARGO (USA EL CÓDIGO DE ÁREA COMO DEPARTAMENTO)
 	// =========================================================================
 	public String sincronizarCargoAlt(String codCargo) {
 		return sincronizarCargoAlt(codCargo, true);
@@ -234,21 +257,13 @@ public class SsoSincronizacionServiceAlt {
 		RefCargoAlt cargo = cargoOpt.get();
 		String codigoStr = String.valueOf(cargo.getCodCargo());
 
-		// Buscar el Centro de Costo asociado al cargo (o "45" por defecto si es nulo)
-		String codCentroCostoVal = "45";
-		if (cargo.getCodDepartamento() != null && cargo.getCodDepartamento() != 0) {
-			Optional<NomiRefCentrodecosto> centroOpt = centrodecostoRepo.findById(cargo.getCodDepartamento());
-			if (centroOpt.isPresent() && centroOpt.get().getCodCentrodecosto() != null) {
-				codCentroCostoVal = String.valueOf(centroOpt.get().getCodCentrodecosto());
-			} else {
-				codCentroCostoVal = String.valueOf(cargo.getCodDepartamento());
-			}
-		}
+		// 🎯 Obtenemos el Área mapeando: Cargo -> cod_departamento -> ref_departamento -> cod_area
+		String codAreaVal = obtenerCodAreaDesdeDepartamento(cargo.getCodDepartamento());
 
 		Map<String, Object> payload = new HashMap<>();
 		payload.put("codigo", codigoStr);
 		payload.put("nombre", cargo.getNomCargo());
-		payload.put("departamento", codCentroCostoVal); // Envía el código de Centro de Costo
+		payload.put("departamento", codAreaVal); // Se envía el código de Área como departamento a Orpheus
 
 		String estado = (cargo.getEstCargo() != null && cargo.getEstCargo().equals("A")) ? "A" : "I";
 		payload.put("status", estado);
@@ -465,6 +480,68 @@ public class SsoSincronizacionServiceAlt {
 	public List<NomiRelUsuariocentrocosto> obtenerCentrosCostoPorUsuario(String usrUsuario) {
 		return nomiRelUsuariocentrocostoRepo.findByUsrUsuario(usrUsuario);
 	}
+	
+	// =========================================================================
+	// SINCRONIZAR ÁREAS (ENVIADAS COMO DEPARTAMENTO A ORPHEUS)
+	// =========================================================================
+	public String sincronizarAreaAlt(Short codArea, boolean forzar) {
+		Optional<RefArea> areaOpt = areaRepo.findById(codArea);
+
+		if (areaOpt.isEmpty()) {
+			return "ERROR: Área no encontrada en BD con código " + codArea;
+		}
+
+		RefArea area = areaOpt.get();
+		String codigoStr = String.valueOf(area.getCodArea());
+
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("codigo", codigoStr);
+		payload.put("nombre", area.getNomArea());
+
+		String hash = generarHash(payload);
+
+		if (!forzar && !esRegistroModificado("DEPARTAMENTO", codigoStr, hash)) {
+			return "SKIPPED: Sin cambios";
+		}
+
+		// Se envía el catálogo de áreas al endpoint de departamentos de Orpheus
+		String respuesta = orpheusClient.setDepartamento(payload);
+		registrarSincronizacion("DEPARTAMENTO", codigoStr, hash, respuesta);
+		return respuesta;
+	}
+
+	public Map<String, Object> sincronizarTodasLasAreasAlt(boolean soloModificados) {
+		List<RefArea> areas = areaRepo.findByEstArea("A");
+		int total = areas.size();
+		int procesados = 0;
+		int omitidos = 0;
+		int errores = 0;
+
+		for (RefArea a : areas) {
+			try {
+				Thread.sleep(300);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			String res = sincronizarAreaAlt(a.getCodArea(), !soloModificados);
+			if (res.startsWith("SKIPPED")) {
+				omitidos++;
+			} else if ("TRUE".equalsIgnoreCase(res != null ? res.trim() : "")) {
+				procesados++;
+			} else {
+				errores++;
+			}
+		}
+
+		Map<String, Object> resumen = new HashMap<>();
+		resumen.put("total", total);
+		resumen.put("procesados", procesados);
+		resumen.put("omitidos", omitidos);
+		resumen.put("errores", errores);
+		return resumen;
+	}
+	
+	
 
 	// =========================================================================
 	// SINCRONIZAR TODO MASIVO
@@ -475,7 +552,8 @@ public class SsoSincronizacionServiceAlt {
 		
 		String matriz = sincronizarSucursalPorDefecto();
 		//Map<String, Object> deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
-		Map<String, Object> deptos = sincronizarTodosLosCentrosdecosto(soloModificados);
+		//Map<String, Object> deptos = sincronizarTodosLosCentrosdecosto(soloModificados);
+		Map<String, Object> deptos = sincronizarTodasLasAreasAlt(soloModificados);
 		Map<String, Object> cargos = sincronizarTodosLosCargosAlt(soloModificados);
 		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
 		
@@ -534,19 +612,9 @@ public class SsoSincronizacionServiceAlt {
 		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
 		payload.put("local", "001");
 		
-		// Obtener relaciones del usuario con centro de costo
-		List<NomiRelUsuariocentrocosto> centrosRel = nomiRelUsuariocentrocostoRepo.findByUsrUsuario(usuario.getUsrUsuario());
-
-		String codDepartamentoVal = "45"; // Valor por defecto por si no existe centro de costo asignado
-
-		if (centrosRel != null && !centrosRel.isEmpty()) {
-		    NomiRelUsuariocentrocosto rel = centrosRel.get(0);
-		    if (rel != null && rel.getCodCentrocosto() != null && rel.getCodCentrocosto() != 0) {
-		        codDepartamentoVal = String.valueOf(rel.getCodCentrocosto());
-		    }
-		}
-
-		payload.put("departamento", codDepartamentoVal);
+		// 🎯 Obtenemos el Área a partir del cod_departamento del usuario
+		String codAreaVal = obtenerCodAreaDesdeDepartamento(usuario.getCodDepartamento());
+		payload.put("departamento", codAreaVal); // Se envía el código de Área como departamento a Orpheus
 		//if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
 		//	payload.put("departamento", "1000");
 		//}else {
@@ -857,6 +925,46 @@ public class SsoSincronizacionServiceAlt {
 		item.put("ideCentrodecosto", c.getIdeCentrodecosto());
 		item.put("porCentrodecosto", c.getPorCentrodecosto());
 		item.put("tipCentrodecosto", c.getTipCentrodecosto());
+		return item;
+	}
+	
+	// =========================================================================
+	// CONSULTA DE CATÁLOGOS - ÁREAS
+	// =========================================================================
+
+	public List<Map<String, Object>> obtenerTodasLasAreas() {
+		List<RefArea> areas = areaRepo.findAll();
+		List<Map<String, Object>> lista = new ArrayList<>();
+		
+		for (RefArea a : areas) {
+			Map<String, Object> item = new HashMap<>();
+			item.put("codigo", a.getCodArea());
+			item.put("nombre", a.getNomArea());
+			item.put("estado", a.getEstArea());
+			item.put("ideArea", a.getIdeArea());
+			item.put("codigoEmpresa", a.getCodEmpresa());
+			lista.add(item);
+		}
+		return lista;
+	}
+
+	public Map<String, Object> obtenerAreaPorCodigo(Short codigo) {
+		Map<String, Object> item = new HashMap<>();
+		Optional<RefArea> opt = areaRepo.findById(codigo);
+		
+		if (opt.isEmpty()) {
+			item.put("error", "Área no encontrada con código " + codigo);
+			return item;
+		}
+		
+		RefArea a = opt.get();
+		item.put("codigo", a.getCodArea());
+		item.put("nombre", a.getNomArea());
+		item.put("estado", a.getEstArea());
+		item.put("ideArea", a.getIdeArea());
+		item.put("tipoArea", a.getTipArea());
+		item.put("usrGerente", a.getUsrGerente());
+		item.put("codigoEmpresa", a.getCodEmpresa());
 		return item;
 	}
 	
