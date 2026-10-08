@@ -1165,8 +1165,12 @@ public class SsoSincronizacionServiceAlt {
 				// ====================================================================
 				// 2. SINCRONIZACIÓN DE CATÁLOGOS A ORPHEUS (Desde Alt)
 				// ====================================================================
-				log.info("Verificando cambios de Alt hacia Orpheus en Departamentos...");
-				sincronizarTodosLosDepartamentosAlt(true);
+				
+				log.info("Verificando cambios de Áreas hacia Orpheus (Departamentos)...");
+				sincronizarTodasLasAreasAlt(true);
+				
+				//log.info("Verificando cambios de Alt hacia Orpheus en Departamentos...");
+				//sincronizarTodosLosDepartamentosAlt(true);
 
 				log.info("Verificando cambios de Alt hacia Orpheus en Cargos...");
 				sincronizarTodosLosCargosAlt(true);
