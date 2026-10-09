@@ -114,12 +114,24 @@ public class SsoDepartamentoSyncService {
 			boolean tieneEmpleados = deptosEnUso.contains(orig.getCodDepartamento());
 			String estadoCalculado = tieneEmpleados ? "A" : "I";
 
+			// Asegura un ideDepartamento válido (no nulo) para evitar errores NOT NULL en MySQL
+			String ideDeptoVal = (orig.getIdeDepartamento() != null && !orig.getIdeDepartamento().trim().isEmpty())
+					? orig.getIdeDepartamento()
+					: String.valueOf(orig.getCodDepartamento());
+
 			if (altOpt.isEmpty()) {
 				RefDepartamentoAlt nuevoAlt = new RefDepartamentoAlt();
 				nuevoAlt.setCodDepartamento(orig.getCodDepartamento());
 				nuevoAlt.setNomDepartamento(orig.getNomDepartamento());
 				nuevoAlt.setCodArea(orig.getCodArea());
 				nuevoAlt.setEstDepartamento(estadoCalculado);
+				nuevoAlt.setIdeDepartamento(ideDeptoVal); // 👈 FIX: Asignación de campo obligatorio
+				nuevoAlt.setCodEmpresa(orig.getCodEmpresa());
+				nuevoAlt.setDesDepartamento(orig.getDesDepartamento());
+				nuevoAlt.setTipDepartamento(orig.getTipDepartamento());
+				nuevoAlt.setUsrGerentecost(orig.getUsrGerentecost());
+				nuevoAlt.setUsrGerentesier(orig.getUsrGerentesier());
+
 				departamentoRepoAlt.save(nuevoAlt);
 				log.info("Nuevo departamento clonado en Alt: {} (Estado: {})", orig.getCodDepartamento(), estadoCalculado);
 			} else {
@@ -139,6 +151,11 @@ public class SsoDepartamentoSyncService {
 
 				if (!Objects.equals(orig.getCodArea(), alt.getCodArea())) {
 					alt.setCodArea(orig.getCodArea());
+					cambiado = true;
+				}
+
+				if (!Objects.equals(ideDeptoVal, alt.getIdeDepartamento())) {
+					alt.setIdeDepartamento(ideDeptoVal);
 					cambiado = true;
 				}
 
