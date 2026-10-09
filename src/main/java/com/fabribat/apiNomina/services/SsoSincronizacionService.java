@@ -36,10 +36,9 @@ import com.fabribat.apiNomina.repositories.rrhh.RefProvinciaRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefUsuarioRepository;
 import com.fabribat.apiNomina.repositories.security.SincronizacionLogRepository;
 
-
 @Service
 public class SsoSincronizacionService {
-	
+
 	private static final Logger log = LoggerFactory.getLogger(SsoSincronizacionService.class);
 
 	@Autowired
@@ -62,7 +61,7 @@ public class SsoSincronizacionService {
 
 	@Autowired
 	private RefCiudadRepository ciudadRepo;
-	
+
 	@Autowired
 	private RefCantonRepository cantonRepo;
 
@@ -77,7 +76,7 @@ public class SsoSincronizacionService {
 
 	@org.springframework.beans.factory.annotation.Value("${sync.automatica.habilitada:true}")
 	private boolean automatizacionHabilitada;
-	
+
 	// =========================================================================
 	// METODOS AUXILIARES DE CONTROL LOCAL
 	// =========================================================================
@@ -105,12 +104,13 @@ public class SsoSincronizacionService {
 		logEntity.setCodigoEntidad(codigo);
 		logEntity.setHashContenido(hash);
 		logEntity.setFechaUltimoSync(LocalDateTime.now());
-		
-	    // Asegura que no sobrepase los 250 caracteres si el XML de respuesta es muy largo
-	    if (resultado != null && resultado.length() > 250) {
-	        resultado = resultado.substring(0, 245) + "...";
-	    }
-	    
+
+		// Asegura que no sobrepase los 250 caracteres si el XML de respuesta es muy
+		// largo
+		if (resultado != null && resultado.length() > 250) {
+			resultado = resultado.substring(0, 245) + "...";
+		}
+
 		logEntity.setResultado(resultado);
 		syncLogRepo.save(logEntity);
 	}
@@ -215,7 +215,8 @@ public class SsoSincronizacionService {
 		Map<String, Object> payload = new HashMap<>();
 		payload.put("codigo", codigoStr);
 		payload.put("nombre", cargo.getNomCargo());
-		payload.put("departamento", cargo.getCodDepartamento() != null ? String.valueOf(cargo.getCodDepartamento()) : "");
+		payload.put("departamento",
+				cargo.getCodDepartamento() != null ? String.valueOf(cargo.getCodDepartamento()) : "");
 
 		String estado = (cargo.getEstCargo() != null && cargo.getEstCargo().equals("A")) ? "A" : "I";
 		payload.put("status", estado);
@@ -296,11 +297,14 @@ public class SsoSincronizacionService {
 		while (intento < maxReintentos && !conexionExitosa) {
 			respuesta = orpheusClient.setEmpleado(payload);
 
-			// Detectamos si es un error de caída de red ("header parser received no bytes" o similares)
-			if (respuesta == null || respuesta.contains("header parser received no bytes") || respuesta.contains("I/O error")) {
+			// Detectamos si es un error de caída de red ("header parser received no bytes"
+			// o similares)
+			if (respuesta == null || respuesta.contains("header parser received no bytes")
+					|| respuesta.contains("I/O error")) {
 				intento++;
-				log.warn("Fallo de red al sincronizar empleado {} (Intento {} de {}). Reintentando en 3 segundos...", cedula, intento, maxReintentos);
-				
+				log.warn("Fallo de red al sincronizar empleado {} (Intento {} de {}). Reintentando en 3 segundos...",
+						cedula, intento, maxReintentos);
+
 				if (intento < maxReintentos) {
 					try {
 						Thread.sleep(3000); // Pausa de 3 segundos para dejar que el servidor externo se recupere
@@ -310,21 +314,22 @@ public class SsoSincronizacionService {
 					}
 				}
 			} else {
-				// Si respondió TRUE o dio un error de validación (ej. Fecha vacía o Puesto Inválido), salimos del bucle
+				// Si respondió TRUE o dio un error de validación (ej. Fecha vacía o Puesto
+				// Inválido), salimos del bucle
 				conexionExitosa = true;
 			}
 		}
-		
+
 		if (respuesta != null && respuesta.contains("TRUE")) {
-			log.info("Empleado sincronizado exitosamente: cédula={}, nombre={} {}", 
-				cedula, usuario.getNomUsuario(), usuario.getApeUsuario());
+			log.info("Empleado sincronizado exitosamente: cédula={}, nombre={} {}", cedula, usuario.getNomUsuario(),
+					usuario.getApeUsuario());
 			registrarSincronizacion("EMPLEADO", cedula, hash, respuesta);
 		} else {
-			log.warn("Respuesta inesperada de ORPHEUS al sincronizar empleado: cédula={}, respuesta={}", 
-				cedula, respuesta);
+			log.warn("Respuesta inesperada de ORPHEUS al sincronizar empleado: cédula={}, respuesta={}", cedula,
+					respuesta);
 			registrarSincronizacion("EMPLEADO", cedula, hash, "ERROR: " + respuesta);
 		}
-		
+
 		return respuesta;
 	}
 
@@ -359,37 +364,37 @@ public class SsoSincronizacionService {
 		return resumen;
 	}
 
-	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados){
+	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados) {
 		Map<String, Object> resumenGeneral = new HashMap<>();
-		
+
 		String matriz = sincronizarSucursalPorDefecto();
 		Map<String, Object> deptos = sincronizarTodosLosDepartamentos(soloModificados);
 		Map<String, Object> cargos = sincronizarTodosLosCargos(soloModificados);
 		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
-		
+
 		resumenGeneral.put("matriz", matriz);
 		resumenGeneral.put("departamentos", deptos);
 		resumenGeneral.put("cargos", cargos);
 		resumenGeneral.put("empleados", empleados);
-		
+
 		return resumenGeneral;
 	}
-
 
 	// =========================================================================
 	// UTILERIAS & PAYLOAD HELPERS
 	// =========================================================================
 
 	private String traducirEstadoCivil(String codCivilBD) {
-		if (codCivilBD == null) return "1";
+		if (codCivilBD == null)
+			return "1";
 
 		return switch (codCivilBD.toUpperCase()) {
-			case "S" -> "2";
-			case "C" -> "3";
-			case "V" -> "4";
-			case "D" -> "5";
-			case "U" -> "6";
-			default -> "1";
+		case "S" -> "2";
+		case "C" -> "3";
+		case "V" -> "4";
+		case "D" -> "5";
+		case "U" -> "6";
+		default -> "1";
 		};
 	}
 
@@ -408,38 +413,42 @@ public class SsoSincronizacionService {
 		payload.put("sexo", usuario.getGenUsuario() != null ? usuario.getGenUsuario() : "M");
 		payload.put("estado_civil", traducirEstadoCivil(bkp.getEstadoCivil()));
 		payload.put("instruccion", "7");
-		if(bkp.getCodProvinciaVive()== null || "-1".equals(bkp.getCodProvinciaVive().toString())){
+		if (bkp.getCodProvinciaVive() == null || "-1".equals(bkp.getCodProvinciaVive().toString())) {
 			payload.put("provincia", "17");
-		}else {
+		} else {
 			payload.put("provincia", bkp.getCodProvinciaVive().toString());
 		}
-		if(bkp.getCodCiudadVive()== null || "-1".equals(bkp.getCodCiudadVive().toString())){
+		if (bkp.getCodCiudadVive() == null || "-1".equals(bkp.getCodCiudadVive().toString())) {
 			payload.put("ciudad", "17");
-		}else {
+		} else {
 			payload.put("ciudad", bkp.getCodCiudadVive().toString());
 		}
 		payload.put("local", "001");
-		
-		if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
+
+		if (usuario.getCodDepartamento() == null || "-1".equals(usuario.getCodDepartamento().toString())) {
 			payload.put("departamento", "1000");
-		}else {
+		} else {
 			payload.put("departamento", usuario.getCodDepartamento().toString());
 		}
-		if(usuario.getCodCargentiexte()== null || "-1".equals(usuario.getCodCargentiexte().toString())){
+		if (usuario.getCodCargentiexte() == null || "-1".equals(usuario.getCodCargentiexte().toString())) {
 			payload.put("puesto", "1000");
-		}else {
+		} else {
 			payload.put("puesto", usuario.getCodCargentiexte().toString());
-		}		
+		}
 		payload.put("ingreso", bkp.getFechaIngreso() != null ? bkp.getFechaIngreso().format(dtf) : "");
 		payload.put("salida", bkp.getFechaSalida() != null ? bkp.getFechaSalida().format(dtf) : "");
 
 		StringBuilder direccionCompleta = new StringBuilder();
-		if (bkp.getDireccionPrincipal() != null) direccionCompleta.append(bkp.getDireccionPrincipal());
-		if (bkp.getDireccionNumero() != null) direccionCompleta.append(" ").append(bkp.getDireccionNumero());
-		if (bkp.getDireccionSecundaria() != null) direccionCompleta.append(" Y ").append(bkp.getDireccionSecundaria());
-		if (bkp.getDireccionBarrio() != null) direccionCompleta.append(" - ").append(bkp.getDireccionBarrio());
-		if (bkp.getDireccionReferencia() != null) direccionCompleta.append(" - REF: ").append(bkp.getDireccionReferencia());
-
+		if (bkp.getDireccionPrincipal() != null)
+			direccionCompleta.append(bkp.getDireccionPrincipal());
+		if (bkp.getDireccionNumero() != null)
+			direccionCompleta.append(" ").append(bkp.getDireccionNumero());
+		if (bkp.getDireccionSecundaria() != null)
+			direccionCompleta.append(" Y ").append(bkp.getDireccionSecundaria());
+		if (bkp.getDireccionBarrio() != null)
+			direccionCompleta.append(" - ").append(bkp.getDireccionBarrio());
+		if (bkp.getDireccionReferencia() != null)
+			direccionCompleta.append(" - REF: ").append(bkp.getDireccionReferencia());
 
 		payload.put("direccion", direccionCompleta.toString().trim());
 		payload.put("telefono", "");
@@ -450,7 +459,7 @@ public class SsoSincronizacionService {
 
 		return payload;
 	}
-	
+
 	// =========================================================================
 	// CONSULTA DE CATALOGOS PRINCIPALES
 	// =========================================================================
@@ -484,7 +493,7 @@ public class SsoSincronizacionService {
 	// =========================================================================
 	// CONSULTA DE ÁREAS (NUEVO)
 	// =========================================================================
-	
+
 	public List<Map<String, Object>> obtenerTodasLasAreas() {
 		List<RefArea> areas = areaRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
@@ -573,7 +582,7 @@ public class SsoSincronizacionService {
 	public List<Map<String, Object>> obtenerTodasLasProvincias() {
 		List<RefProvincia> provincias = provinciaRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
-		
+
 		for (RefProvincia p : provincias) {
 			Map<String, Object> item = new HashMap<>();
 			item.put("codigo", p.getCodProvincia());
@@ -588,12 +597,12 @@ public class SsoSincronizacionService {
 	public Map<String, Object> obtenerProvinciaPorCodigo(Long codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefProvincia> opt = provinciaRepo.findById(codigo);
-		
+
 		if (opt.isEmpty()) {
 			item.put("error", "Provincia no encontrada con código " + codigo);
 			return item;
 		}
-		
+
 		RefProvincia p = opt.get();
 		item.put("codigo", p.getCodProvincia());
 		item.put("nombre", p.getNomProvincia());
@@ -607,7 +616,7 @@ public class SsoSincronizacionService {
 	public List<Map<String, Object>> obtenerTodasLasCiudades() {
 		List<RefCiudad> ciudades = ciudadRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
-		
+
 		for (RefCiudad c : ciudades) {
 			Map<String, Object> item = new HashMap<>();
 			item.put("codigo", c.getCodCiudad());
@@ -625,12 +634,12 @@ public class SsoSincronizacionService {
 	public Map<String, Object> obtenerCiudadPorCodigo(Long codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefCiudad> opt = ciudadRepo.findById(codigo);
-		
+
 		if (opt.isEmpty()) {
 			item.put("error", "Ciudad no encontrada con código " + codigo);
 			return item;
 		}
-		
+
 		RefCiudad c = opt.get();
 		item.put("codigo", c.getCodCiudad());
 		item.put("nombre", c.getNomCiudad());
@@ -643,11 +652,11 @@ public class SsoSincronizacionService {
 		item.put("traCiudad", c.getTraCiudad());
 		return item;
 	}
-	
+
 	public List<Map<String, Object>> obtenerTodosLosCantones() {
 		List<RefCanton> cantones = cantonRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
-		
+
 		for (RefCanton c : cantones) {
 			Map<String, Object> item = new HashMap<>();
 			item.put("codigo", c.getCodCanton());
@@ -662,12 +671,12 @@ public class SsoSincronizacionService {
 	public Map<String, Object> obtenerCantonPorCodigo(Short codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefCanton> opt = cantonRepo.findById(codigo);
-		
+
 		if (opt.isEmpty()) {
 			item.put("error", "Canton no encontrado con código " + codigo);
 			return item;
 		}
-		
+
 		RefCanton c = opt.get();
 		item.put("codigo", c.getCodCanton());
 		item.put("nombre", c.getNomCanton());
@@ -680,7 +689,7 @@ public class SsoSincronizacionService {
 	public List<Map<String, Object>> obtenerTodosLosCargos() {
 		List<RefCargo> cargos = cargoRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
-		
+
 		for (RefCargo c : cargos) {
 			Map<String, Object> item = new HashMap<>();
 			item.put("codigo", c.getCodCargo());
@@ -698,12 +707,12 @@ public class SsoSincronizacionService {
 	public Map<String, Object> obtenerCargoPorCodigo(Long codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefCargo> opt = cargoRepo.findById(codigo.shortValue());
-		
+
 		if (opt.isEmpty()) {
 			item.put("error", "Cargo no encontrado con código " + codigo);
 			return item;
 		}
-		
+
 		RefCargo c = opt.get();
 		item.put("codigo", c.getCodCargo());
 		item.put("nombre", c.getNomCargo());
@@ -726,7 +735,7 @@ public class SsoSincronizacionService {
 	public List<Map<String, Object>> obtenerTodosLosDepartamentos() {
 		List<RefDepartamento> departamentos = departamentoRepo.findAll();
 		List<Map<String, Object>> lista = new ArrayList<>();
-		
+
 		for (RefDepartamento d : departamentos) {
 			Map<String, Object> item = new HashMap<>();
 			item.put("codigo", d.getCodDepartamento());
@@ -743,12 +752,12 @@ public class SsoSincronizacionService {
 	public Map<String, Object> obtenerDepartamentoPorCodigo(String codigo) {
 		Map<String, Object> item = new HashMap<>();
 		Optional<RefDepartamento> opt = departamentoRepo.findById(Short.parseShort(codigo));
-		
+
 		if (opt.isEmpty()) {
 			item.put("error", "Departamento no encontrado con código " + codigo);
 			return item;
 		}
-		
+
 		RefDepartamento d = opt.get();
 		item.put("codigo", d.getCodDepartamento());
 		item.put("nombre", d.getNomDepartamento());
@@ -767,70 +776,100 @@ public class SsoSincronizacionService {
 		item.put("usrGerentesier", d.getUsrGerentesier());
 		return item;
 	}
-	
+
+	// =========================================================================
+	// CONTROL DINÁMICO DE AUTOMATIZACIÓN EN BD SECURITY (ESTÁNDAR)
+	// =========================================================================
+
+	public boolean isAutomatizacionHabilitada() {
+		Optional<SincronizacionLog> configOpt = syncLogRepo.findByTipoEntidadAndCodigoEntidad("CONFIG", "AUTO_SYNC");
+		if (configOpt.isPresent()) {
+			return "true".equalsIgnoreCase(configOpt.get().getResultado());
+		}
+		return automatizacionHabilitada;
+	}
+
+	public boolean cambiarEstadoAutomatizacion(boolean habilitada) {
+		Optional<SincronizacionLog> configOpt = syncLogRepo.findByTipoEntidadAndCodigoEntidad("CONFIG", "AUTO_SYNC");
+		SincronizacionLog config = configOpt.orElseGet(() -> {
+			SincronizacionLog nuevo = new SincronizacionLog();
+			nuevo.setTipoEntidad("CONFIG");
+			nuevo.setCodigoEntidad("AUTO_SYNC");
+			nuevo.setHashContenido("N/A");
+			return nuevo;
+		});
+
+		config.setResultado(String.valueOf(habilitada));
+		config.setFechaUltimoSync(LocalDateTime.now());
+		syncLogRepo.save(config);
+
+		log.info("⚙️ Estado de automatización Estándar actualizado en BD Security: habilitada = {}", habilitada);
+		return habilitada;
+	}
+
 	// ====================================================================
 	// SINCRONIZACIÓN AUTOMATICA
 	// ====================================================================
-	
+
 	// Ejecuta cada 5 minutos (300,000 ms).
 	@org.springframework.scheduling.annotation.Scheduled(fixedDelay = 300000)
 	public void orquestadorSincronizacionAutomatica() {
-	    // 🛑 El Kill Switch: Si está apagado, nos salimos inmediatamente
-	    if (!automatizacionHabilitada) {
-	        log.info("⏳ Sincronización automática en pausa por configuración.");
-	        return;
-	    }
-			log.info("--- INICIANDO CICLO DE SINCRONIZACIÓN AUTOMÁTICA ---");
-
-			try {
-				// ====================================================================
-				// 1. SINCRONIZACIÓN DE CATÁLOGOS (Padres)
-				// ====================================================================
-				log.info("Verificando cambios en Departamentos...");
-				sincronizarTodosLosDepartamentos(true);
-
-				log.info("Verificando cambios en Cargos...");
-				sincronizarTodosLosCargos(true);
-
-				// ====================================================================
-				// 2. SINCRONIZACIÓN DE EMPLEADOS (Hijos)
-				// ====================================================================
-				log.info("Verificando novedades de Empleados en BkpUsuario...");
-				SincronizacionLog tracker = syncLogRepo.findByTipoEntidadAndCodigoEntidad("TRACKER", "BKP_USUARIO")
-						.orElseGet(() -> {
-							SincronizacionLog nuevo = new SincronizacionLog();
-							nuevo.setTipoEntidad("TRACKER");
-							nuevo.setCodigoEntidad("BKP_USUARIO");
-							nuevo.setHashContenido("N/A"); // Obligatorio en tu entidad
-							nuevo.setResultado("0");       // Empezamos desde el código cero
-							nuevo.setFechaUltimoSync(LocalDateTime.now());
-							return nuevo;
-						});
-
-				Long ultimoCodigo = Long.parseLong(tracker.getResultado());
-				List<BkpUsuario> novedades = bkpRepo.findByCambCodigoGreaterThanOrderByCambCodigoAsc(ultimoCodigo);
-				
-				if (!novedades.isEmpty()) {
-					log.info("Se encontraron {} novedades de empleados.", novedades.size());
-					for (BkpUsuario novedad : novedades) {
-						// Sincroniza al empleado asegurando que sus catálogos ya existen
-						sincronizarEmpleado(novedad.getCedUsuario(), true);
-						
-						// Actualiza el puntero localmente en cada iteración
-						ultimoCodigo = novedad.getCambCodigo();
-					}
-					// Guarda el nuevo récord en la BD
-					tracker.setResultado(String.valueOf(ultimoCodigo));
-					tracker.setFechaUltimoSync(LocalDateTime.now());
-					syncLogRepo.save(tracker);
-				} else {
-					log.info("No hay nuevas actualizaciones de empleados en bkp_usuario.");
+		// Consulta dinámicamente la BD Security
+				if (!isAutomatizacionHabilitada()) {
+					log.info("⏳ Sincronización automática Estándar en pausa por configuración en BD Security.");
+					return;
 				}
+		log.info("--- INICIANDO CICLO DE SINCRONIZACIÓN AUTOMÁTICA ---");
 
-				log.info("--- CICLO DE SINCRONIZACIÓN FINALIZADO EXITOSAMENTE ---");
+		try {
+			// ====================================================================
+			// 1. SINCRONIZACIÓN DE CATÁLOGOS (Padres)
+			// ====================================================================
+			log.info("Verificando cambios en Departamentos...");
+			sincronizarTodosLosDepartamentos(true);
 
-			} catch (Exception e) {
-				log.error("Error crítico durante el ciclo de sincronización automática", e);
+			log.info("Verificando cambios en Cargos...");
+			sincronizarTodosLosCargos(true);
+
+			// ====================================================================
+			// 2. SINCRONIZACIÓN DE EMPLEADOS (Hijos)
+			// ====================================================================
+			log.info("Verificando novedades de Empleados en BkpUsuario...");
+			SincronizacionLog tracker = syncLogRepo.findByTipoEntidadAndCodigoEntidad("TRACKER", "BKP_USUARIO")
+					.orElseGet(() -> {
+						SincronizacionLog nuevo = new SincronizacionLog();
+						nuevo.setTipoEntidad("TRACKER");
+						nuevo.setCodigoEntidad("BKP_USUARIO");
+						nuevo.setHashContenido("N/A"); // Obligatorio en tu entidad
+						nuevo.setResultado("0"); // Empezamos desde el código cero
+						nuevo.setFechaUltimoSync(LocalDateTime.now());
+						return nuevo;
+					});
+
+			Long ultimoCodigo = Long.parseLong(tracker.getResultado());
+			List<BkpUsuario> novedades = bkpRepo.findByCambCodigoGreaterThanOrderByCambCodigoAsc(ultimoCodigo);
+
+			if (!novedades.isEmpty()) {
+				log.info("Se encontraron {} novedades de empleados.", novedades.size());
+				for (BkpUsuario novedad : novedades) {
+					// Sincroniza al empleado asegurando que sus catálogos ya existen
+					sincronizarEmpleado(novedad.getCedUsuario(), true);
+
+					// Actualiza el puntero localmente en cada iteración
+					ultimoCodigo = novedad.getCambCodigo();
+				}
+				// Guarda el nuevo récord en la BD
+				tracker.setResultado(String.valueOf(ultimoCodigo));
+				tracker.setFechaUltimoSync(LocalDateTime.now());
+				syncLogRepo.save(tracker);
+			} else {
+				log.info("No hay nuevas actualizaciones de empleados en bkp_usuario.");
 			}
+
+			log.info("--- CICLO DE SINCRONIZACIÓN FINALIZADO EXITOSAMENTE ---");
+
+		} catch (Exception e) {
+			log.error("Error crítico durante el ciclo de sincronización automática", e);
 		}
+	}
 }

@@ -211,12 +211,14 @@ public class SsoSincronizacionServiceAlt {
 
 	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados) {
 		Map<String, Object> resumenGeneral = new HashMap<>();
-		
+
 		deptoSyncService.refrescarDepartamentosAlt();
 
 		String matriz = sincronizarSucursalPorDefecto();
-		//Map<String, Object> deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
-		//Map<String, Object> deptos = sincronizarTodosLosCentrosdecosto(soloModificados);
+		// Map<String, Object> deptos =
+		// sincronizarTodosLosDepartamentosAlt(soloModificados);
+		// Map<String, Object> deptos =
+		// sincronizarTodosLosCentrosdecosto(soloModificados);
 		Map<String, Object> deptos = sincronizarTodasLasAreasAlt(soloModificados);
 		Map<String, Object> cargos = sincronizarTodosLosCargosAlt(soloModificados);
 		Map<String, Object> empleados = sincronizarTodosLosEmpleados(soloModificados);
@@ -229,26 +231,66 @@ public class SsoSincronizacionServiceAlt {
 		return resumenGeneral;
 	}
 
+	// =========================================================================
+	// CONTROL DINÁMICO DE AUTOMATIZACIÓN EN BD SECURITY
+	// =========================================================================
+
+	/**
+	 * Consulta en la BD Security si la automatización está habilitada.
+	 */
+	public boolean isAutomatizacionHabilitada() {
+		Optional<SincronizacionLog> configOpt = syncLogRepo.findByTipoEntidadAndCodigoEntidad("CONFIG",
+				"AUTO_SYNC_ALT");
+		if (configOpt.isPresent()) {
+			return "true".equalsIgnoreCase(configOpt.get().getResultado());
+		}
+		// Si aún no se ha creado el registro en BD, usa el valor de
+		// application.properties por defecto
+		return automatizacionHabilitada;
+	}
+
+	/**
+	 * Cambia el estado de la automatización directamente en la BD Security.
+	 */
+	public boolean cambiarEstadoAutomatizacion(boolean habilitada) {
+		Optional<SincronizacionLog> configOpt = syncLogRepo.findByTipoEntidadAndCodigoEntidad("CONFIG",
+				"AUTO_SYNC_ALT");
+		SincronizacionLog config = configOpt.orElseGet(() -> {
+			SincronizacionLog nuevo = new SincronizacionLog();
+			nuevo.setTipoEntidad("CONFIG");
+			nuevo.setCodigoEntidad("AUTO_SYNC_ALT");
+			nuevo.setHashContenido("N/A");
+			return nuevo;
+		});
+
+		config.setResultado(String.valueOf(habilitada));
+		config.setFechaUltimoSync(LocalDateTime.now());
+		syncLogRepo.save(config);
+
+		log.info("⚙️ Estado de automatización actualizado en BD Security: habilitada = {}", habilitada);
+		return habilitada;
+	}
+
 	// ====================================================================
 	// ORQUESTADOR CRON JOB (EJECUCIÓN CADA 5 MINUTOS)
 	// ====================================================================
 
 	@org.springframework.scheduling.annotation.Scheduled(fixedDelay = 300000)
 	public void orquestadorSincronizacionAutomatica() {
-		if (!automatizacionHabilitada) {
-			log.info("⏳ Sincronización automática en pausa por configuración.");
+		// Consulta el estado en BD Security en lugar de la variable local fija
+		if (!isAutomatizacionHabilitada()) {
+			log.info("⏳ Sincronización automática en pausa por configuración en BD Security.");
 			return;
 		}
 		log.info("--- INICIANDO CICLO DE SINCRONIZACIÓN AUTOMÁTICA (DELTA + ACTIVOS) ---");
 
 		try {
-			// PASO 1: Refresco obligatorio del espejo local (calcula 'A'/'I' según empleados activos)
+			// Paso 1: Refrescar BD Espejo local
 			log.info("Paso 1: Refrescando catálogos en BD Espejo...");
 			List<Short> areasModificadas = areaSyncService.refrescarAreasAlt();
 			deptoSyncService.refrescarDepartamentosAlt();
 			List<Short> cargosModificados = cargoSyncService.refrescarCargosAlt();
 
-			// Transmitir inmediatamente a Orpheus los catálogos activados/modificados por la llegada de colaboradores
 			for (Short codArea : areasModificadas) {
 				areaSyncService.sincronizarAreaAlt(codArea, false);
 			}
@@ -256,7 +298,7 @@ public class SsoSincronizacionServiceAlt {
 				cargoSyncService.sincronizarCargoAlt(String.valueOf(codCargo), false);
 			}
 
-			// PASO 2: Procesar deltas de auditoría BKP hacia Orpheus
+			// Paso 2: Procesar deltas BKP hacia Orpheus
 			log.info("Paso 2: Procesando novedades incrementales hacia Orpheus...");
 			areaSyncService.procesarNovedadesAreas();
 			deptoSyncService.procesarNovedadesDepartamentos();

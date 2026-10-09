@@ -22,7 +22,7 @@ public class RefDepartamento implements Serializable {
 	private short codArea;
 
 	@Column(name="cod_empresa")
-	private short codEmpresa;
+	private Short codEmpresa;
 
 	@Column(name="des_departamento")
 	private String desDepartamento;
@@ -79,11 +79,11 @@ public class RefDepartamento implements Serializable {
 		this.codArea = codArea;
 	}
 
-	public short getCodEmpresa() {
+	public Short getCodEmpresa() {
 		return this.codEmpresa;
 	}
 
-	public void setCodEmpresa(short codEmpresa) {
+	public void setCodEmpresa(Short codEmpresa) {
 		this.codEmpresa = codEmpresa;
 	}
 

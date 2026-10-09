@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -93,15 +94,29 @@ public class SsoAreaSyncService {
 			boolean tieneEmpleados = areasEnUso.contains(orig.getCodArea());
 			String estadoCalculado = tieneEmpleados ? "A" : "I";
 
+			// Sanitización defensiva
+			String nomAreaVal = (orig.getNomArea() != null && !orig.getNomArea().trim().isEmpty())
+					? orig.getNomArea()
+					: "AREA " + orig.getCodArea();
+
+			String ideAreaVal = (orig.getIdeArea() != null && !orig.getIdeArea().trim().isEmpty())
+					? orig.getIdeArea()
+					: String.valueOf(orig.getCodArea());
+
+			String tipAreaVal = (orig.getTipArea() != null) ? orig.getTipArea() : "";
+			String usrGerenteVal = (orig.getUsrGerente() != null) ? orig.getUsrGerente() : "";
+			Short codEmpresaVal = (orig.getCodEmpresa() != null) ? orig.getCodEmpresa() : (short) 1;
+
 			if (altOpt.isEmpty()) {
 				RefAreaAlt nuevoAlt = new RefAreaAlt();
 				nuevoAlt.setCodArea(orig.getCodArea());
-				nuevoAlt.setCodEmpresa(orig.getCodEmpresa());
-				nuevoAlt.setUsrGerente(orig.getUsrGerente());
-				nuevoAlt.setIdeArea(orig.getIdeArea());
-				nuevoAlt.setNomArea(orig.getNomArea());
-				nuevoAlt.setTipArea(orig.getTipArea());
+				nuevoAlt.setNomArea(nomAreaVal);
+				nuevoAlt.setIdeArea(ideAreaVal);
+				nuevoAlt.setTipArea(tipAreaVal);
+				nuevoAlt.setUsrGerente(usrGerenteVal);
+				nuevoAlt.setCodEmpresa(codEmpresaVal);
 				nuevoAlt.setEstArea(estadoCalculado);
+
 				areaRepoAlt.save(nuevoAlt);
 				log.info("Nueva área clonada en Alt: {} (Estado: {})", orig.getCodArea(), estadoCalculado);
 				if ("A".equals(estadoCalculado)) {
@@ -117,8 +132,8 @@ public class SsoAreaSyncService {
 					log.info("Área {} cambió a estado '{}' (Empleados activos: {})", orig.getCodArea(), estadoCalculado, tieneEmpleados);
 				}
 
-				if (orig.getNomArea() != null && !orig.getNomArea().equals(alt.getNomArea())) {
-					alt.setNomArea(orig.getNomArea());
+				if (!Objects.equals(nomAreaVal, alt.getNomArea())) {
+					alt.setNomArea(nomAreaVal);
 					cambiado = true;
 				}
 

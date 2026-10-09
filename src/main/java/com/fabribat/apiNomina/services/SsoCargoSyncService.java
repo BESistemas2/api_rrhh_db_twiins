@@ -101,12 +101,20 @@ public class SsoCargoSyncService {
 			boolean tieneEmpleados = cargosEnUso.contains(orig.getCodCargo());
 			String estadoCalculado = tieneEmpleados ? "A" : "I";
 
+			// Sanitización defensiva
+			String nomCargoVal = (orig.getNomCargo() != null && !orig.getNomCargo().trim().isEmpty())
+					? orig.getNomCargo()
+					: "CARGO " + orig.getCodCargo();
+
+			Short codDeptoVal = (orig.getCodDepartamento() != null) ? orig.getCodDepartamento() : (short) 1;
+
 			if (altOpt.isEmpty()) {
 				RefCargoAlt nuevoAlt = new RefCargoAlt();
 				nuevoAlt.setCodCargo(orig.getCodCargo());
-				nuevoAlt.setNomCargo(orig.getNomCargo());
-				nuevoAlt.setCodDepartamento(orig.getCodDepartamento());
+				nuevoAlt.setNomCargo(nomCargoVal);
+				nuevoAlt.setCodDepartamento(codDeptoVal);
 				nuevoAlt.setEstCargo(estadoCalculado);
+
 				cargoRepoAlt.save(nuevoAlt);
 				log.info("Nuevo cargo clonado en Alt: {} (Estado: {})", orig.getCodCargo(), estadoCalculado);
 				if ("A".equals(estadoCalculado)) {
@@ -122,13 +130,13 @@ public class SsoCargoSyncService {
 					log.info("Cargo {} cambió a estado '{}' (Empleados activos: {})", orig.getCodCargo(), estadoCalculado, tieneEmpleados);
 				}
 
-				if (orig.getNomCargo() != null && !orig.getNomCargo().equals(alt.getNomCargo())) {
-					alt.setNomCargo(orig.getNomCargo());
+				if (!Objects.equals(nomCargoVal, alt.getNomCargo())) {
+					alt.setNomCargo(nomCargoVal);
 					cambiado = true;
 				}
 
-				if (orig.getCodDepartamento() != null && !Objects.equals(orig.getCodDepartamento(), alt.getCodDepartamento())) {
-					alt.setCodDepartamento(orig.getCodDepartamento());
+				if (!Objects.equals(codDeptoVal, alt.getCodDepartamento())) {
+					alt.setCodDepartamento(codDeptoVal);
 					cambiado = true;
 				}
 

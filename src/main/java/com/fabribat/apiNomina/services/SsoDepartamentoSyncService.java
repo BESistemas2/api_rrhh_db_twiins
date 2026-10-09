@@ -114,23 +114,47 @@ public class SsoDepartamentoSyncService {
 			boolean tieneEmpleados = deptosEnUso.contains(orig.getCodDepartamento());
 			String estadoCalculado = tieneEmpleados ? "A" : "I";
 
-			// Asegura un ideDepartamento válido (no nulo) para evitar errores NOT NULL en MySQL
+			// 🛡️ BLINDAJE DEFENSIVO CONTRA ATRIBUTOS NULL (NOT NULL CONSTRAINTS EN MYSQL)
+			String nomDeptoVal = (orig.getNomDepartamento() != null && !orig.getNomDepartamento().trim().isEmpty())
+					? orig.getNomDepartamento()
+					: "DEPARTAMENTO " + orig.getCodDepartamento();
+
 			String ideDeptoVal = (orig.getIdeDepartamento() != null && !orig.getIdeDepartamento().trim().isEmpty())
 					? orig.getIdeDepartamento()
 					: String.valueOf(orig.getCodDepartamento());
 
+			String orgDeptoVal = (orig.getOrgDepartamento() != null && !orig.getOrgDepartamento().trim().isEmpty())
+					? orig.getOrgDepartamento()
+					: "1";
+
+			String priDeptoVal = (orig.getPriDepartamento() != null) ? orig.getPriDepartamento() : "";
+			String resDeptoVal = (orig.getResDepartamento() != null) ? orig.getResDepartamento() : "";
+			String objEspeVal = (orig.getObjEspedepartamento() != null) ? orig.getObjEspedepartamento() : "";
+			String objEstrVal = (orig.getObjEstrdepartamento() != null) ? orig.getObjEstrdepartamento() : "";
+			String desDeptoVal = (orig.getDesDepartamento() != null) ? orig.getDesDepartamento() : "";
+			String tipDeptoVal = (orig.getTipDepartamento() != null) ? orig.getTipDepartamento() : "";
+			String usrGerenteCostVal = (orig.getUsrGerentecost() != null) ? orig.getUsrGerentecost() : "";
+			String usrGerenteSierVal = (orig.getUsrGerentesier() != null) ? orig.getUsrGerentesier() : "";
+			Short codEmpresaVal = (orig.getCodEmpresa() != null) ? orig.getCodEmpresa() : (short) 1;
+			short codAreaVal = (orig.getCodArea() != 0) ? orig.getCodArea() : (short) 1;
+
 			if (altOpt.isEmpty()) {
 				RefDepartamentoAlt nuevoAlt = new RefDepartamentoAlt();
 				nuevoAlt.setCodDepartamento(orig.getCodDepartamento());
-				nuevoAlt.setNomDepartamento(orig.getNomDepartamento());
-				nuevoAlt.setCodArea(orig.getCodArea());
+				nuevoAlt.setNomDepartamento(nomDeptoVal);
+				nuevoAlt.setCodArea(codAreaVal);
 				nuevoAlt.setEstDepartamento(estadoCalculado);
-				nuevoAlt.setIdeDepartamento(ideDeptoVal); // 👈 FIX: Asignación de campo obligatorio
-				nuevoAlt.setCodEmpresa(orig.getCodEmpresa());
-				nuevoAlt.setDesDepartamento(orig.getDesDepartamento());
-				nuevoAlt.setTipDepartamento(orig.getTipDepartamento());
-				nuevoAlt.setUsrGerentecost(orig.getUsrGerentecost());
-				nuevoAlt.setUsrGerentesier(orig.getUsrGerentesier());
+				nuevoAlt.setIdeDepartamento(ideDeptoVal);
+				nuevoAlt.setOrgDepartamento(orgDeptoVal);
+				nuevoAlt.setPriDepartamento(priDeptoVal);
+				nuevoAlt.setResDepartamento(resDeptoVal);
+				nuevoAlt.setObjEspedepartamento(objEspeVal);
+				nuevoAlt.setObjEstrdepartamento(objEstrVal);
+				nuevoAlt.setDesDepartamento(desDeptoVal);
+				nuevoAlt.setTipDepartamento(tipDeptoVal);
+				nuevoAlt.setUsrGerentecost(usrGerenteCostVal);
+				nuevoAlt.setUsrGerentesier(usrGerenteSierVal);
+				nuevoAlt.setCodEmpresa(codEmpresaVal);
 
 				departamentoRepoAlt.save(nuevoAlt);
 				log.info("Nuevo departamento clonado en Alt: {} (Estado: {})", orig.getCodDepartamento(), estadoCalculado);
@@ -144,18 +168,23 @@ public class SsoDepartamentoSyncService {
 					log.info("Departamento {} cambió a estado '{}' (Empleados activos: {})", orig.getCodDepartamento(), estadoCalculado, tieneEmpleados);
 				}
 
-				if (orig.getNomDepartamento() != null && !orig.getNomDepartamento().equals(alt.getNomDepartamento())) {
-					alt.setNomDepartamento(orig.getNomDepartamento());
+				if (!Objects.equals(nomDeptoVal, alt.getNomDepartamento())) {
+					alt.setNomDepartamento(nomDeptoVal);
 					cambiado = true;
 				}
 
-				if (!Objects.equals(orig.getCodArea(), alt.getCodArea())) {
-					alt.setCodArea(orig.getCodArea());
+				if (alt.getCodArea() != codAreaVal) {
+					alt.setCodArea(codAreaVal);
 					cambiado = true;
 				}
 
 				if (!Objects.equals(ideDeptoVal, alt.getIdeDepartamento())) {
 					alt.setIdeDepartamento(ideDeptoVal);
+					cambiado = true;
+				}
+
+				if (!Objects.equals(orgDeptoVal, alt.getOrgDepartamento())) {
+					alt.setOrgDepartamento(orgDeptoVal);
 					cambiado = true;
 				}
 
