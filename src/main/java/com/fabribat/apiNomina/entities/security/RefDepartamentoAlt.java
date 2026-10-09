@@ -19,7 +19,7 @@ public class RefDepartamentoAlt implements Serializable {
 	private short codDepartamento;
 
 	@Column(name="cod_area")
-	private short codArea;
+	private Short codArea;
 
 	@Column(name="cod_empresa")
 	private short codEmpresa;
@@ -71,11 +71,11 @@ public class RefDepartamentoAlt implements Serializable {
 		this.codDepartamento = codDepartamento;
 	}
 
-	public short getCodArea() {
+	public Short getCodArea() {
 		return this.codArea;
 	}
 
-	public void setCodArea(short codArea) {
+	public void setCodArea(Short codArea) {
 		this.codArea = codArea;
 	}
 

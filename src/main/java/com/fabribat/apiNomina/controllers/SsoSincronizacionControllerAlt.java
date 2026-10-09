@@ -21,7 +21,7 @@ public class SsoSincronizacionControllerAlt {
     private SsoSincronizacionServiceAlt syncService;
 
     // =========================================================================
-    // ENDPOINTS INDIVIDUALES (EXISTENTES)
+    // ENDPOINTS ACTIVOS (PRODUCCIÓN)
     // =========================================================================
 
     @PostMapping("/sucursal-matriz")
@@ -29,13 +29,9 @@ public class SsoSincronizacionControllerAlt {
         return ResponseEntity.ok(syncService.sincronizarSucursalPorDefecto());
     }
 
-    //@PostMapping("/departamento/{codDepartamento}")
-    //public ResponseEntity<String> syncDepartamento(@PathVariable String codDepartamento) {
-    //    return ResponseEntity.ok(syncService.sincronizarDepartamentoAlt(codDepartamento));
-    //}
-    
     /**
-     * Sincroniza un Área individual (enviada como 'Departamento' a Orpheus).
+     * Sincroniza un Área individual. 
+     * NOTA: En Orpheus, las Áreas de nuestra BD se mapean y consumen el endpoint de "Departamentos".
      */
     @PostMapping("/area/{codArea}")
     public ResponseEntity<String> syncArea(@PathVariable Short codArea) {
@@ -44,16 +40,16 @@ public class SsoSincronizacionControllerAlt {
 
     @PostMapping("/cargo/{codCargo}")
     public ResponseEntity<String> syncCargo(@PathVariable String codCargo) {
-        return ResponseEntity.ok(syncService.sincronizarCargoAlt(codCargo));
+        return ResponseEntity.ok(syncService.sincronizarCargoAlt(codCargo, true));
     }
 
     @PostMapping("/empleado/{cedula}")
     public ResponseEntity<String> syncEmpleado(@PathVariable String cedula) {
-        return ResponseEntity.ok(syncService.sincronizarEmpleado(cedula));
+        return ResponseEntity.ok(syncService.sincronizarEmpleado(cedula, true));
     }
 
     // =========================================================================
-    // ENDPOINTS MASIVOS DE SINCRONIZACION (EXISTENTES)
+    // ENDPOINTS MASIVOS ACTIVOS
     // =========================================================================
 
     @PostMapping("/masiva")
@@ -63,13 +59,17 @@ public class SsoSincronizacionControllerAlt {
         return ResponseEntity.ok(resumen);
     }
     
-    /**
-     * Sincroniza masivamente todas las Áreas hacia Orpheus.
-     */
     @PostMapping("/areas/masivo")
     public ResponseEntity<Map<String, Object>> syncAreasMasivo(
             @RequestParam(defaultValue = "true") boolean soloModificados) {
         Map<String, Object> resumen = syncService.sincronizarTodasLasAreasAlt(soloModificados);
+        return ResponseEntity.ok(resumen);
+    }
+
+    @PostMapping("/cargos/masivo")
+    public ResponseEntity<Map<String, Object>> syncCargosMasivo(
+            @RequestParam(defaultValue = "true") boolean soloModificados) {
+        Map<String, Object> resumen = syncService.sincronizarTodosLosCargosAlt(soloModificados);
         return ResponseEntity.ok(resumen);
     }
 
@@ -81,30 +81,21 @@ public class SsoSincronizacionControllerAlt {
     }
 
     // =========================================================================
-    // NUEVOS ENDPOINTS MASIVOS DE ELIMINACION VIA SOAP
+    // ENDPOINTS DE ELIMINACIÓN VÍA SOAP
     // =========================================================================
 
-    /**
-     * Elimina en ORPHEUS todos los departamentos con estado 'I' o 'X' en la BD.
-     */
     @PostMapping("/departamentos/eliminar-inactivos")
     public ResponseEntity<Map<String, Object>> eliminarDepartamentosInactivos() {
         Map<String, Object> resumen = syncService.eliminarDepartamentosInactivosSoap();
         return ResponseEntity.ok(resumen);
     }
 
-    /**
-     * Elimina en ORPHEUS todos los cargos/puestos con estado 'I' o 'X' en la BD.
-     */
     @PostMapping("/cargos/eliminar-inactivos")
     public ResponseEntity<Map<String, Object>> eliminarCargosInactivos() {
         Map<String, Object> resumen = syncService.eliminarCargosInactivosSoap();
         return ResponseEntity.ok(resumen);
     }
 
-    /**
-     * Ejecuta la purga masiva de departamentos y cargos inactivos en un solo proceso.
-     */
     @PostMapping("/purgar-inactivos-masivo")
     public ResponseEntity<Map<String, Object>> purgarInactivosMasivo() {
         Map<String, Object> resultado = new HashMap<>();
@@ -112,4 +103,57 @@ public class SsoSincronizacionControllerAlt {
         resultado.put("cargos", syncService.eliminarCargosInactivosSoap());
         return ResponseEntity.ok(resultado);
     }
+
+    // =========================================================================
+    // ⚠️ HISTORIAL DE ARQUITECTURA Y ENDPOINTS DESHABILITADOS ⚠️
+    // =========================================================================
+    /*
+     * EVOLUCIÓN DEL MAPEO HACIA EL CATÁLOGO "DEPARTAMENTO" DE ORPHEUS:
+     * -------------------------------------------------------------------------
+     * Debido a las limitaciones estructurales del proveedor externo, el concepto 
+     * de "Departamento" en Orpheus sufrió mutaciones a lo largo del tiempo para
+     * adaptarse a la jerarquía real de la empresa:
+     * 
+     * - Fase 1: Se enviaba la tabla original `ref_departamento`.
+     * - Fase 2: Se intentó usar la tabla `nomi_ref_centrodecosto` como departamento.
+     * - Fase 3 (ACTUAL DEFINITIVA): Se determinó que la estructura operativa real 
+     *   que gobierna a la organización es la tabla `ref_area`. Por lo tanto, 
+     *   actualmente son las ÁREAS las que se envían a la API /set_departamento.
+     * 
+     * RIESGO CRÍTICO DE CORRUPCIÓN DE DATOS:
+     * Los siguientes endpoints están COMENTADOS INTENCIONALMENTE. Si un desarrollador 
+     * los descomenta y son consumidos por el Frontend o Postman, el sistema sobreescribirá 
+     * el catálogo de Áreas en Orpheus con Centros de Costo o Departamentos internos. 
+     * Esto corrompería la data de Empleados y Puestos (Cargos), los cuales ya están 
+     * programados para mandar su código de ÁREA como su llave foránea de departamento.
+     * 
+     * Se preserva este código fuente exclusivamente con fines de documentación histórica 
+     * y como respaldo de métodos internos.
+     */
+
+    /*
+    @PostMapping("/departamento/{codDepartamento}")
+    public ResponseEntity<String> syncDepartamento(@PathVariable String codDepartamento) {
+        return ResponseEntity.ok(syncService.sincronizarDepartamentoAlt(codDepartamento, true));
+    }
+
+    @PostMapping("/departamentos/masivo")
+    public ResponseEntity<Map<String, Object>> syncDepartamentosMasivo(
+            @RequestParam(defaultValue = "true") boolean soloModificados) {
+        Map<String, Object> resumen = syncService.sincronizarTodosLosDepartamentosAlt(soloModificados);
+        return ResponseEntity.ok(resumen);
+    }
+
+    @PostMapping("/centrodecosto/{codCentrodecosto}")
+    public ResponseEntity<String> syncCentrodecosto(@PathVariable String codCentrodecosto) {
+        return ResponseEntity.ok(syncService.sincronizarCentrodecosto(codCentrodecosto, true));
+    }
+
+    @PostMapping("/centrosdecosto/masivo")
+    public ResponseEntity<Map<String, Object>> syncCentrosdecostoMasivo(
+            @RequestParam(defaultValue = "true") boolean soloModificados) {
+        Map<String, Object> resumen = syncService.sincronizarTodosLosCentrosdecosto(soloModificados);
+        return ResponseEntity.ok(resumen);
+    }
+    */
 }

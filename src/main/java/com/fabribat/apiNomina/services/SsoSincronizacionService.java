@@ -16,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
 import com.fabribat.apiNomina.entities.rrhh.BkpUsuario;
+import com.fabribat.apiNomina.entities.rrhh.NomiRefCentrodecosto;
+import com.fabribat.apiNomina.entities.rrhh.RefArea;
 import com.fabribat.apiNomina.entities.rrhh.RefCargo;
 import com.fabribat.apiNomina.entities.rrhh.RefCiudad;
 import com.fabribat.apiNomina.entities.rrhh.RefCanton;
@@ -23,11 +25,9 @@ import com.fabribat.apiNomina.entities.rrhh.RefDepartamento;
 import com.fabribat.apiNomina.entities.rrhh.RefProvincia;
 import com.fabribat.apiNomina.entities.rrhh.RefUsuario;
 import com.fabribat.apiNomina.entities.security.SincronizacionLog;
-import com.fabribat.apiNomina.entities.security.RefCargoAlt;
-import com.fabribat.apiNomina.entities.security.RefCantonAlt;
-import com.fabribat.apiNomina.entities.security.RefDepartamentoAlt;
-import com.fabribat.apiNomina.entities.security.RefProvinciaAlt;
 import com.fabribat.apiNomina.repositories.rrhh.BkpUsuarioRepository;
+import com.fabribat.apiNomina.repositories.rrhh.NomiRefCentrodecostoRepository;
+import com.fabribat.apiNomina.repositories.rrhh.RefAreaRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCargoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCiudadRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefCantonRepository;
@@ -35,10 +35,7 @@ import com.fabribat.apiNomina.repositories.rrhh.RefDepartamentoRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefProvinciaRepository;
 import com.fabribat.apiNomina.repositories.rrhh.RefUsuarioRepository;
 import com.fabribat.apiNomina.repositories.security.SincronizacionLogRepository;
-import com.fabribat.apiNomina.repositories.security.RefCargoRepositoryAlt;
-import com.fabribat.apiNomina.repositories.security.RefCantonRepositoryAlt;
-import com.fabribat.apiNomina.repositories.security.RefDepartamentoRepositoryAlt;
-import com.fabribat.apiNomina.repositories.security.RefProvinciaRepositoryAlt;
+
 
 @Service
 public class SsoSincronizacionService {
@@ -50,6 +47,12 @@ public class SsoSincronizacionService {
 
 	@Autowired
 	private RefDepartamentoRepository departamentoRepo;
+
+	@Autowired
+	private RefAreaRepository areaRepo; // AGREGADO PARA ÁREAS
+
+	@Autowired
+	private NomiRefCentrodecostoRepository centrodecostoRepo; // AGREGADO PARA CENTROS DE COSTO
 
 	@Autowired
 	private RefCargoRepository cargoRepo;
@@ -68,18 +71,6 @@ public class SsoSincronizacionService {
 
 	@Autowired
 	private BkpUsuarioRepository bkpRepo;
-	
-	@Autowired
-	private RefDepartamentoRepositoryAlt departamentoRepoAlt;
-
-	@Autowired
-	private RefCargoRepositoryAlt cargoRepoAlt;
-
-	@Autowired
-	private RefProvinciaRepositoryAlt provinciaRepoAlt;
-
-	@Autowired
-	private RefCantonRepositoryAlt cantonRepoAlt;
 
 	@Autowired
 	private SincronizacionLogRepository syncLogRepo;
@@ -427,8 +418,6 @@ public class SsoSincronizacionService {
 		}else {
 			payload.put("ciudad", bkp.getCodCiudadVive().toString());
 		}
-		// payload.put("provincia", bkp.getCodProvinciaVive() != null ? bkp.getCodProvinciaVive().toString() : "17");
-		// payload.put("ciudad", bkp.getCodCiudadVive() != null ? bkp.getCodCiudadVive().toString() : "1");
 		payload.put("local", "001");
 		
 		if(usuario.getCodDepartamento()== null || "-1".equals(usuario.getCodDepartamento().toString())){
@@ -441,8 +430,6 @@ public class SsoSincronizacionService {
 		}else {
 			payload.put("puesto", usuario.getCodCargentiexte().toString());
 		}		
-		//payload.put("departamento", usuario.getCodDepartamento() != null ? usuario.getCodDepartamento().toString() : "");
-		//payload.put("puesto", String.valueOf(usuario.getCodCargentiexte()));
 		payload.put("ingreso", bkp.getFechaIngreso() != null ? bkp.getFechaIngreso().format(dtf) : "");
 		payload.put("salida", bkp.getFechaSalida() != null ? bkp.getFechaSalida().format(dtf) : "");
 
@@ -463,8 +450,9 @@ public class SsoSincronizacionService {
 
 		return payload;
 	}
+	
 	// =========================================================================
-	// CONSULTA DE CATALOGOS
+	// CONSULTA DE CATALOGOS PRINCIPALES
 	// =========================================================================
 
 	public Map<String, Object> obtenerPayloadEmpleado(String cedula) {
@@ -492,6 +480,95 @@ public class SsoSincronizacionService {
 		}
 		return listaPayloads;
 	}
+
+	// =========================================================================
+	// CONSULTA DE ÁREAS (NUEVO)
+	// =========================================================================
+	
+	public List<Map<String, Object>> obtenerTodasLasAreas() {
+		List<RefArea> areas = areaRepo.findAll();
+		List<Map<String, Object>> lista = new ArrayList<>();
+
+		for (RefArea a : areas) {
+			Map<String, Object> item = new HashMap<>();
+			item.put("codigo", a.getCodArea());
+			item.put("nombre", a.getNomArea());
+			item.put("estado", a.getEstArea());
+			item.put("ideArea", a.getIdeArea());
+			item.put("codigoEmpresa", a.getCodEmpresa());
+			lista.add(item);
+		}
+		return lista;
+	}
+
+	public Map<String, Object> obtenerAreaPorCodigo(Short codigo) {
+		Map<String, Object> item = new HashMap<>();
+		Optional<RefArea> opt = areaRepo.findById(codigo);
+
+		if (opt.isEmpty()) {
+			item.put("error", "Área no encontrada con código " + codigo);
+			return item;
+		}
+
+		RefArea a = opt.get();
+		item.put("codigo", a.getCodArea());
+		item.put("nombre", a.getNomArea());
+		item.put("estado", a.getEstArea());
+		item.put("ideArea", a.getIdeArea());
+		item.put("tipoArea", a.getTipArea());
+		item.put("usrGerente", a.getUsrGerente());
+		item.put("codigoEmpresa", a.getCodEmpresa());
+		return item;
+	}
+
+	// =========================================================================
+	// CONSULTA DE CENTROS DE COSTO (NUEVO)
+	// =========================================================================
+
+	public List<Map<String, Object>> obtenerTodosLosCentrosdecosto() {
+		List<NomiRefCentrodecosto> centros = centrodecostoRepo.findAll();
+		List<Map<String, Object>> lista = new ArrayList<>();
+
+		for (NomiRefCentrodecosto c : centros) {
+			Map<String, Object> item = new HashMap<>();
+			item.put("codigo", c.getCodCentrodecosto());
+			item.put("nombre", c.getNomCentrodecosto());
+			item.put("estado", c.getEstCentrodecosto());
+			item.put("descripcion", c.getDesCentrodecosto());
+			item.put("codigoEmpresa", c.getCodEmpresa());
+			item.put("codigoRegion", c.getCodRegion());
+			lista.add(item);
+		}
+		return lista;
+	}
+
+	public Map<String, Object> obtenerCentrodecostoPorCodigo(String codigo) {
+		Map<String, Object> item = new HashMap<>();
+		Optional<NomiRefCentrodecosto> opt = centrodecostoRepo.findById(Short.parseShort(codigo));
+
+		if (opt.isEmpty()) {
+			item.put("error", "Centro de costo no encontrado con código " + codigo);
+			return item;
+		}
+
+		NomiRefCentrodecosto c = opt.get();
+		item.put("codigo", c.getCodCentrodecosto());
+		item.put("nombre", c.getNomCentrodecosto());
+		item.put("estado", c.getEstCentrodecosto());
+		item.put("descripcion", c.getDesCentrodecosto());
+		item.put("codigoEmpresa", c.getCodEmpresa());
+		item.put("codigoRegion", c.getCodRegion());
+		item.put("codigoCiudad", c.getCodCiudad());
+		item.put("codigoDistribucion", c.getCodDistribucion());
+		item.put("ideCentrodecosto", c.getIdeCentrodecosto());
+		item.put("porCentrodecosto", c.getPorCentrodecosto());
+		item.put("tipCentrodecosto", c.getTipCentrodecosto());
+		return item;
+	}
+
+	// =========================================================================
+	// CONSULTA DE OTROS CATÁLOGOS GEOGRÁFICOS Y PUESTOS
+	// =========================================================================
 
 	public List<Map<String, Object>> obtenerTodasLasProvincias() {
 		List<RefProvincia> provincias = provinciaRepo.findAll();
