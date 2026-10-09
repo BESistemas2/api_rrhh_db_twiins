@@ -211,6 +211,8 @@ public class SsoSincronizacionServiceAlt {
 
 	public Map<String, Object> sincronizarTodoMasivo(boolean soloModificados) {
 		Map<String, Object> resumenGeneral = new HashMap<>();
+		
+		deptoSyncService.refrescarDepartamentosAlt();
 
 		String matriz = sincronizarSucursalPorDefecto();
 		//Map<String, Object> deptos = sincronizarTodosLosDepartamentosAlt(soloModificados);
